@@ -1,4 +1,6 @@
-const hiveClient=new dsteem.Client('https://api.hive.blog');const steemClient=new dsteem.Client('https://api.steemit.com');blurt.api.setOptions({url:"https://rpc.blurt.world",useAppbaseApi:true})
+const hiveClient=new dsteem.Client('https://api.hive.blog');
+const steemClient=new dsteem.Client('https://api.steemit.com');
+blurt.api.setOptions({url:"https://rpc.blurt.world",useAppbaseApi:true})
 async function checkAccountName(username,chain){let ac;if(chain==='blurt'){[ac]=await blurt.api.getAccountsAsync([username]);}else if(chain==='steem'){[ac]=await steemClient.database.call('lookup_account_names',[[username]]);}else{[ac]=await hiveClient.database.call('lookup_account_names',[[username]]);}
 return(ac===undefined||ac===null)?true:false;}
 function suggestPassword(){const array=new Uint32Array(10);window.crypto.getRandomValues(array);return 'P'+dsteem.PrivateKey.fromSeed(array).toString();}
