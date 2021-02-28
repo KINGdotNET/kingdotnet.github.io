@@ -326,8 +326,6 @@
                     1
                 );
             },
-
-            <b>Ads here!</b>
             r = [],
             n = (s("386d"), s("96cf"), s("1da1")),
             i = function () {
