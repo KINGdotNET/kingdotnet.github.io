@@ -1,0 +1,13 @@
+{
+"companyName": "QUE.com",
+"productName": "Que.com/FlappyBird",
+"dataUrl": "FlappyBird.data.unityweb",
+"asmCodeUrl": "FlappyBird.asm.code.unityweb",
+"asmMemoryUrl": "FlappyBird.asm.memory.unityweb",
+"asmFrameworkUrl": "FlappyBird.asm.framework.unityweb",
+"TOTAL_MEMORY": 268435456,
+"graphicsAPI": ["WebGL 2.0", "WebGL 1.0"],
+"webglContextAttributes": {"preserveDrawingBuffer": false},
+"splashScreenStyle": "Dark",
+"backgroundColor": "#231F20"
+}
