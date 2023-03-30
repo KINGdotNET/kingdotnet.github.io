@@ -8,8 +8,8 @@ Home of <a href="https://king.net"><b>KING.NET</b></a> Projects. A service by <a
   <li>https://MultiPlaying.com - Collections of FREE Games, updating page</li>
   <li>https://MyScoop.com - Decentralized Social Media (in progress).</li>
   <li>Pardon our dust, list will continue to update.</li>
-
-Thank you,
+<p>
+Thank you,<br \>
 EM @<a href="https://king.net"><b>KING.NET</b></a> - Ideas to Life.
 
   
