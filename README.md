@@ -14,7 +14,7 @@ Home of <a href="https://king.net"><b>KING.NET</b></a> Projects. A service by <a
 Some projects also posted here to bring awareness, visit KING's <a href="https://que.com/king"><b>https://que.com/king</b></a> web page.
 </p>
 
-Thank you,<br \>
+Thank you,
 EM @<a href="https://king.net"><b>KING.NET</b></a> - Ideas to Life.
 
   
