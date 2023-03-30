@@ -8,6 +8,11 @@ Home of <a href="https://king.net"><b>KING.NET</b></a> Projects. A service by <a
   <li>https://MultiPlaying.com - Collections of FREE Games, updating page</li>
   <li>https://MyScoop.com - Decentralized Social Media (in progress).</li>
   <li>Pardon our dust, list will continue to update.</li>
+</ul>
+<p>
+NOTE: Sometimes I got lazy.<br \>
+You should be able to see updates at <a href="https://que.com/king"><b>https://que.com/king</b></a> web page.
+</p>
 <br \>
 <br \>
 Thank you,<br \>
