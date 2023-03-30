@@ -10,7 +10,6 @@ Home of <a href="https://king.net"><b>KING.NET</b></a> Projects. A service by <a
   <li>Pardon our dust, list will continue to update.</li>
 
 Thank you,
-```
 EM @<a href="https://king.net"><b>KING.NET</b></a> - Ideas to Life.
-```
+
   
