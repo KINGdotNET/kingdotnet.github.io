@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 10px;
+        }
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .card.flipped {
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GuessMe.com - Memory Card Game</h1>
+    <div class="game-board"></div>
+    <script>
+        const gameBoard = document.querySelector('.game-board');
+        const symbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+        let cards = [...symbols, ...symbols];
+        let flippedCards = [];
+        let matchedPairs = 0;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createCard(symbol) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.dataset.symbol = symbol;
+            card.addEventListener('click', flipCard);
+            return card;
+        }
+
+        function flipCard() {
+            if (flippedCards.length < 2 && !this.classList.contains('flipped')) {
+                this.classList.add('flipped');
+                this.textContent = this.dataset.symbol;
+                flippedCards.push(this);
+
+                if (flippedCards.length === 2) {
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.dataset.symbol === card2.dataset.symbol) {
+                matchedPairs++;
+                if (matchedPairs === symbols.length) {
+                    alert('Congratulations! You won!');
+                }
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                card1.textContent = '';
+                card2.textContent = '';
+            }
+            flippedCards = [];
+        }
+
+        function initGame() {
+            shuffleArray(cards);
+            cards.forEach(symbol => {
+                const card = createCard(symbol);
+                gameBoard.appendChild(card);
+            });
+        }
+
+        initGame();
+    </script>
+
+</body>
+</html>
