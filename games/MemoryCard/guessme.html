@@ -341,12 +341,12 @@ Version 202406290038.
         startButton.addEventListener('click', initGame);
 
         document.querySelector('.twitter').addEventListener('click', () => {
-            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score?`;
+            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score? Visit KING.NET or GuessMe.com to play.`;
             window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
         });
 
         document.querySelector('.facebook').addEventListener('click', () => {
-            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score?`;
+            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score? Visit KING.NET or GuessMe.com to play.`;
             window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`, '_blank');
         });
 
