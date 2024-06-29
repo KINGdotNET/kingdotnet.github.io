@@ -1,0 +1,13 @@
+These changes include:
+
+A new "Restart Game" button that appears after the game ends. This button resets the game to the initial state, allowing the player to choose a new difficulty and category.
+Actual sharing functionality for Twitter and Facebook. The shareToTwitter() and shareToFacebook() functions open a new window with a pre-filled message for sharing. Note that for Facebook sharing to work correctly, your game would need to be hosted on a public website.
+The share buttons are now hidden until the game ends, and they appear along with the restart button.
+The game area is properly reset when starting a new game or restarting.
+
+To use this updated version:
+
+Replace your existing index.html and hangman.js files with these new versions.
+Open the index.html file in a web browser.
+
+This improved version now allows players to easily restart the game and share their results on social media platforms. The core gameplay remains the same, but the user experience is enhanced with these new features.
