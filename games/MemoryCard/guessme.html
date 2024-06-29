@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING.NET | GuessMe.com Advanced Memory Card Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .game-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .game-board {
+            display: grid;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+        .card:hover {
+            transform: scale(1.05);
+        }
+        .card.flipped {
+            background-color: #fff;
+            border: 1px solid #999;
+            transform: rotateY(180deg);
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .leaderboard {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard th, .leaderboard td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .leaderboard th {
+            background-color: #f2f2f2;
+        }
+        .share-buttons {
+            margin-top: 10px;
+        }
+        .share-buttons button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .twitter {
+            background-color: #1DA1F2;
+            color: white;
+        }
+        .facebook {
+            background-color: #4267B2;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>GuessMe.com Memory Card Game</h1>
+        <div class="controls">
+            <select id="difficulty">
+                <option value="easy">Easy (6x6)</option>
+                <option value="medium">Medium (8x8)</option>
+                <option value="hard">Hard (10x10)</option>
+            </select>
+            <button id="start-game">Start Game</button>
+            <div>Time: <span id="timer">00:00</span></div>
+            <div>Moves: <span id="moveCount">0</span></div>
+            <div>Score: <span id="score">0</span></div>
+        </div>
+        <div class="game-board"></div>
+        <div class="share-buttons" style="display: none;">
+            <button class="twitter">Share on Twitter</button>
+            <button class="facebook">Share on Facebook</button>
+        </div>
+    </div>
+    <div class="leaderboard">
+        <h2>Leaderboard</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Difficulty</th>
+                    <th>Score</th>
+                    <th>Time</th>
+                    <th>Moves</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+        </table>
+    </div>
+    <script>
+        const gameBoard = document.querySelector('.game-board');
+        const moveCountDisplay = document.getElementById('moveCount');
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const difficultySelect = document.getElementById('difficulty');
+        const startButton = document.getElementById('start-game');
+        const shareButtons = document.querySelector('.share-buttons');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+
+        const symbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦗', '🕷️', '🦂', '🦟', '🦠', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟'];
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let score = 0;
+        let timer;
+        let seconds = 0;
+        let gameSize;
+        let difficulty;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createCard(symbol) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.dataset.symbol = symbol;
+            card.addEventListener('click', flipCard);
+            return card;
+        }
+
+        function flipCard() {
+            if (flippedCards.length < 2 && !this.classList.contains('flipped')) {
+                this.classList.add('flipped');
+                this.textContent = this.dataset.symbol;
+                flippedCards.push(this);
+
+                if (flippedCards.length === 2) {
+                    moves++;
+                    moveCountDisplay.textContent = moves;
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.dataset.symbol === card2.dataset.symbol) {
+                matchedPairs++;
+                updateScore(10);
+                if (matchedPairs === gameSize * gameSize / 2) {
+                    endGame();
+                }
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                setTimeout(() => {
+                    card1.textContent = '';
+                    card2.textContent = '';
+                }, 250);
+                updateScore(-2);
+            }
+            flippedCards = [];
+        }
+
+        function updateScore(points) {
+            score += points;
+            scoreDisplay.textContent = score;
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                seconds++;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        function initGame() {
+            gameBoard.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            score = 0;
+            seconds = 0;
+            moveCountDisplay.textContent = '0';
+            scoreDisplay.textContent = '0';
+            timerDisplay.textContent = '00:00';
+            shareButtons.style.display = 'none';
+
+            difficulty = difficultySelect.value;
+            gameSize = difficulty === 'easy' ? 6 : difficulty === 'medium' ? 8 : 10;
+
+            gameBoard.style.gridTemplateColumns = `repeat(${gameSize}, ${60}px)`;
+            const gameSymbols = symbols.slice(0, gameSize * gameSize / 2);
+            cards = [...gameSymbols, ...gameSymbols];
+            shuffleArray(cards);
+
+            cards.forEach(symbol => {
+                const card = createCard(symbol);
+                card.style.width = `${60}px`;
+                card.style.height = `${60}px`;
+                gameBoard.appendChild(card);
+            });
+
+            startTimer();
+        }
+
+        function endGame() {
+            stopTimer();
+            const finalTime = timerDisplay.textContent;
+            const finalScore = score;
+            alert(`Congratulations! You won in ${moves} moves!\nTime: ${finalTime}\nScore: ${finalScore}`);
+            shareButtons.style.display = 'block';
+            updateLeaderboard(difficulty, finalScore, finalTime, moves);
+        }
+
+        function updateLeaderboard(difficulty, score, time, moves) {
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            const playerName = prompt('Enter your name for the leaderboard:');
+            leaderboard.push({ name: playerName, difficulty, score, time, moves });
+            leaderboard.sort((a, b) => b.score - a.score);
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            displayLeaderboard();
+        }
+
+        function displayLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboardBody.innerHTML = '';
+            leaderboard.forEach((entry, index) => {
+                const row = leaderboardBody.insertRow();
+                row.insertCell(0).textContent = index + 1;
+                row.insertCell(1).textContent = entry.name;
+                row.insertCell(2).textContent = entry.difficulty;
+                row.insertCell(3).textContent = entry.score;
+                row.insertCell(4).textContent = entry.time;
+                row.insertCell(5).textContent = entry.moves;
+            });
+        }
+
+        startButton.addEventListener('click', initGame);
+
+        document.querySelector('.twitter').addEventListener('click', () => {
+            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score?`;
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        });
+
+        document.querySelector('.facebook').addEventListener('click', () => {
+            const text = `I just scored ${score} points in the Memory Card Game! Can you beat my score?`;
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`, '_blank');
+        });
+
+        displayLeaderboard();
+    </script>
+</body>
+</html>
