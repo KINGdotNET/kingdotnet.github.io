@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Math Challenge</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #question {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #answer {
+            font-size: 18px;
+            padding: 5px;
+            width: 100px;
+        }
+        #submit {
+            font-size: 18px;
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+        #score, #timer {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        #difficulty {
+            margin-bottom: 20px;
+        }
+        #share-buttons {
+            margin-top: 20px;
+        }
+        .share-button {
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Advanced Math Challenge</h1>
+        <div id="difficulty">
+            <button id="easy">Easy</button>
+            <button id="medium">Medium</button>
+            <button id="hard">Hard</button>
+        </div>
+        <div id="question"></div>
+        <input type="number" id="answer" step="0.01" autofocus>
+        <button id="submit">Submit</button>
+        <div id="score">Score: 0</div>
+        <div id="timer">Time: 60</div>
+        <div id="share-buttons" style="display: none;">
+            <button class="share-button" id="twitter-share">Share on Twitter</button>
+            <button class="share-button" id="facebook-share">Share on Facebook</button>
+        </div>
+    </div>
+    <audio id="correct-sound" src="https://www.soundjay.com/buttons/sounds/button-09.mp3"></audio>
+    <audio id="wrong-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
+    <script src="mathgame.js"></script>
+</body>
+</html>
