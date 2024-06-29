@@ -1,0 +1,22 @@
+To use this version:
+
+Save the HTML content in a file named index.html.
+Save the JavaScript content in a file named hangman.js in the same directory as the HTML file.
+Open the index.html file in a web browser.
+
+This JavaScript version includes all the main features of the Python version:
+
+Multiple difficulty levels and categories
+SVG graphics for the hangman
+A scoring system based on difficulty, time taken, and number of guesses
+A leaderboard that persists between game sessions (using localStorage)
+The ability to share results (simulated with an alert and clipboard copy)
+
+The main differences are:
+
+The game runs in a web browser instead of a console.
+The leaderboard is stored in the browser's localStorage instead of a JSON file.
+The UI is more interactive, with buttons and input fields instead of console prompts.
+Sharing is simulated by copying the result to the clipboard instead of providing social media links.
+
+This version provides a more visual and interactive Hangman game experience while maintaining the core gameplay and features of the Python version.

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #hangman-svg { width: 200px; height: 200px; }
+        #word-display { font-size: 24px; margin: 20px 0; }
+        #guessed-letters { margin-bottom: 20px; }
+        #message { margin-top: 20px; font-weight: bold; }
+        #leaderboard { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Hangman Game</h1>
+    <div id="game-setup">
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        <select id="category">
+            <option value="animals">Animals</option>
+            <option value="countries">Countries</option>
+            <option value="fruits">Fruits</option>
+        </select>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <div id="game-area" style="display:none;">
+        <svg id="hangman-svg" xmlns="http://www.w3.org/2000/svg">
+            <!-- SVG content will be updated by JavaScript -->
+        </svg>
+        <div id="word-display"></div>
+        <div id="guessed-letters"></div>
+        <input type="text" id="guess-input" maxlength="1">
+        <button onclick="makeGuess()">Guess</button>
+        <div id="message"></div>
+    </div>
+    <div id="leaderboard"></div>
+    <script src="hangman3.js"></script>
+</body>
+</html>
