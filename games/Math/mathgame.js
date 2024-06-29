@@ -142,12 +142,12 @@ function resetGame() {
 
 function shareOnTwitter() {
     const text = `I scored ${score} points in the Advanced Math Challenge (${difficulty} mode)! Can you beat my score? Play now!`;
-    const url = 'https://your-game-url.com';
+    const url = 'https://king.net/games/Math/math.html';
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
 }
 
 function shareOnFacebook() {
-    const url = 'https://your-game-url.com';
+    const url = 'https://king.net/games/Math/math.html';
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
 }
 
