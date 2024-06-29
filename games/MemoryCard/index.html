@@ -35,7 +35,31 @@
     font: 400 15px Lato, sans-serif;
     line-height: 1.8;
     color: #818181;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, sans-serif;    
   }
+
+  .game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 100px);
+    gap: 10px;
+  }
+  .card {
+    width: 100px;
+    height: 100px;
+    background-color: #ddd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  .card.flipped {
+    background-color: #fff;
+  }
+
   h2 {
     font-size: 24px;
     text-transform: uppercase;
@@ -259,22 +283,79 @@
     </div>
   </div>
 </nav>    
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-    <script src="TemplateData/UnityProgress.js"></script>  
-    <script src="Build/UnityLoader.js"></script>
-    <script>
-      var gameInstance = UnityLoader.instantiate("gameContainer", "Build/FlappyBird.json", {onProgress: UnityProgress});
-    </script>
+
   </head>
   <body>
-    <div class="webgl-content">
+    <div>
         <ul class="navHigh">
             <li><a href="https://retune.com" target="_blank">RETUNE.com</a> Your Business. Your Brand |</li>
             <li><a href="https://SexToken.com" target="_blank"> SexToken.com</a> |</li>
             <li><a href="https://que.com/saas" target="_blank"> IndustryStandard.com</a> Start your own Business</li>  
         </ul>
-      <div w3-include-html="memorycardgame4x4.html"></div>  
+      
+        <h1>GuessMe.com - Memory Card Game</h1>
+        <div class="game-board"></div>
+        <script>
+            const gameBoard = document.querySelector('.game-board');
+            const symbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'];
+            let cards = [...symbols, ...symbols];
+            let flippedCards = [];
+            let matchedPairs = 0;
+    
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+    
+            function createCard(symbol) {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.symbol = symbol;
+                card.addEventListener('click', flipCard);
+                return card;
+            }
+    
+            function flipCard() {
+                if (flippedCards.length < 2 && !this.classList.contains('flipped')) {
+                    this.classList.add('flipped');
+                    this.textContent = this.dataset.symbol;
+                    flippedCards.push(this);
+    
+                    if (flippedCards.length === 2) {
+                        setTimeout(checkMatch, 500);
+                    }
+                }
+            }
+    
+            function checkMatch() {
+                const [card1, card2] = flippedCards;
+                if (card1.dataset.symbol === card2.dataset.symbol) {
+                    matchedPairs++;
+                    if (matchedPairs === symbols.length) {
+                        alert('Congratulations! You won!');
+                    }
+                } else {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    card1.textContent = '';
+                    card2.textContent = '';
+                }
+                flippedCards = [];
+            }
+    
+            function initGame() {
+                shuffleArray(cards);
+                cards.forEach(symbol => {
+                    const card = createCard(symbol);
+                    gameBoard.appendChild(card);
+                });
+            }
+    
+            initGame();
+        </script>
+      
   
         <ul class="navLow">
             <li><a href="https://InvestmentCenter.com" target="_blank">InvestmentCenter.com</a> Financial Freedom |</li>
