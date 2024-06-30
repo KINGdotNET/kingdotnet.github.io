@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undead Uprising: Survival's Edge</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; text-align: center; background-color: #1a1a1a; color: #fff; }
+        canvas { border: 1px solid #333; }
+        button { margin: 5px; padding: 5px 10px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #gameArea, #leaderboard { margin-top: 20px; }
+        #inventory, #stats { margin-top: 10px; text-align: left; }
+        #gameLog { height: 100px; overflow-y: scroll; text-align: left; border: 1px solid #333; padding: 5px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Undead Uprising: Survival's Edge</h1>
+    <div id="setupArea">
+        <input type="text" id="playerName" placeholder="Enter your name">
+        <select id="characterClass">
+            <option value="Survivor">Survivor</option>
+            <option value="Medic">Medic</option>
+            <option value="Engineer">Engineer</option>
+            <option value="Soldier">Soldier</option>
+        </select>
+        <select id="difficulty">
+            <option value="1">Survivor (Easy)</option>
+            <option value="2">Veteran (Normal)</option>
+            <option value="3">Nightmare (Hard)</option>
+            <option value="4">Apocalypse (Extreme)</option>
+        </select>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <div id="gameArea" style="display:none;">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="stats"></div>
+        <div id="inventory"></div>
+        <button onclick="move('up')">Up</button>
+        <button onclick="move('down')">Down</button>
+        <button onclick="move('left')">Left</button>
+        <button onclick="move('right')">Right</button>
+        <button onclick="searchItems()">Search for Items</button>
+        <button onclick="craftItem()">Craft Item</button>
+        <button onclick="upgradeSafeZone()">Upgrade Safe Zone</button>
+        <div id="gameLog"></div>
+    </div>
+    <div id="gameOverArea" style="display:none;">
+        <h2>Game Over</h2>
+        <p id="finalScore"></p>
+        <button onclick="shareScore('twitter')">Share on Twitter</button>
+        <button onclick="shareScore('facebook')">Share on Facebook</button>
+        <button onclick="shareScore('instagram')">Share on Instagram</button>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+    <div id="leaderboard"></div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="/background_music.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="zombieAttackSound">
+        <source src="/zombie_attack.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        let player, game, zombies = [];
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const zombieAttackSound = document.getElementById('zombieAttackSound');
+
+        class Player {
+            constructor(name, characterClass) {
+                this.name = name;
+                this.characterClass = characterClass;
+                this.level = 1;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.score = 0;
+                this.inventory = [];
+                this.safeZoneLevel = 1;
+                this.x = 200;
+                this.y = 200;
+            }
+
+            draw() {
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(this.x - 10, this.y - 10, 20, 20);
+            }
+        }
+
+        class Zombie {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.speed = 0.5 + (game.difficulty * 0.1);
+            }
+
+            draw() {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x - 7, this.y - 7, 14, 14);
+            }
+
+            move() {
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+
+                if (dist < 15) {
+                    player.health -= 5 * game.difficulty;
+                    game.log('A zombie attacks you!');
+                    playZombieAttackSound();
+                    if (player.health <= 0) {
+                        game.endGame();
+                    }
+                }
+            }
+        }
+
+        class Game {
+            constructor() {
+                this.difficulty = 1;
+                this.leaderboard = [];
+                this.day = 1;
+                this.isNight = false;
+            }
+
+            updateStats() {
+                document.getElementById('stats').innerHTML = `
+                    Level: ${player.level} | Health: ${player.health}/${player.maxHealth} | 
+                    Score: ${player.score} | Day: ${this.day} | ${this.isNight ? 'Night' : 'Day'}
+                `;
+            }
+
+            updateInventory() {
+                document.getElementById('inventory').innerHTML = `Inventory: ${player.inventory.join(', ')}`;
+            }
+
+            log(message) {
+                const gameLog = document.getElementById('gameLog');
+                gameLog.innerHTML += `<p>${message}</p>`;
+                gameLog.scrollTop = gameLog.scrollHeight;
+            }
+
+            endGame() {
+                this.log(`Game Over. Final score: ${player.score}`);
+                this.leaderboard.push({name: player.name, score: player.score});
+                this.leaderboard.sort((a, b) => b.score - a.score);
+                this.displayLeaderboard();
+                document.getElementById('gameArea').style.display = 'none';
+                document.getElementById('gameOverArea').style.display = 'block';
+                document.getElementById('finalScore').textContent = `Your final score: ${player.score}`;
+                stopBackgroundMusic();
+            }
+
+            displayLeaderboard() {
+                const leaderboardDiv = document.getElementById('leaderboard');
+                leaderboardDiv.innerHTML = '<h2>Leaderboard</h2>';
+                this.leaderboard.slice(0, 5).forEach((entry, index) => {
+                    leaderboardDiv.innerHTML += `<p>${index + 1}. ${entry.name}: ${entry.score}</p>`;
+                });
+            }
+        }
+
+        function startGame() {
+            const name = document.getElementById('playerName').value;
+            const characterClass = document.getElementById('characterClass').value;
+            const difficulty = parseInt(document.getElementById('difficulty').value);
+
+            player = new Player(name, characterClass);
+            game = new Game();
+            game.difficulty = difficulty;
+            zombies = Array(5 + difficulty).fill().map(() => new Zombie());
+
+            document.getElementById('setupArea').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            game.updateStats();
+            game.updateInventory();
+            game.log('Game started. Good luck!');
+
+            playBackgroundMusic();
+            gameLoop();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.draw();
+            zombies.forEach(zombie => {
+                zombie.move();
+                zombie.draw();
+            });
+            game.updateStats();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function move(direction) {
+            const speed = 5;
+            switch(direction) {
+                case 'up': player.y = Math.max(player.y - speed, 0); break;
+                case 'down': player.y = Math.min(player.y + speed, canvas.height); break;
+                case 'left': player.x = Math.max(player.x - speed, 0); break;
+                case 'right': player.x = Math.min(player.x + speed, canvas.width); break;
+            }
+            player.score += 1;
+        }
+
+        function searchItems() {
+            const items = ['Health Potion', 'Ammo', 'Food', 'Scrap Metal', 'Cloth'];
+            const foundItem = items[Math.floor(Math.random() * items.length)];
+            player.inventory.push(foundItem);
+            game.log(`You found: ${foundItem}`);
+            game.updateInventory();
+            player.score += 10;
+        }
+
+        function craftItem() {
+            if (player.inventory.includes('Scrap Metal') && player.inventory.includes('Cloth')) {
+                player.inventory = player.inventory.filter(item => item !== 'Scrap Metal' && item !== 'Cloth');
+                player.inventory.push('Armor');
+                game.log('You crafted Armor!');
+                player.maxHealth += 20;
+                player.health = Math.min(player.health + 20, player.maxHealth);
+                game.updateStats();
+                game.updateInventory();
+                player.score += 50;
+            } else {
+                game.log('Not enough materials to craft.');
+            }
+        }
+
+        function upgradeSafeZone() {
+            if (player.score >= 1000 * player.safeZoneLevel) {
+                player.score -= 1000 * player.safeZoneLevel;
+                player.safeZoneLevel++;
+                game.log(`Safe Zone upgraded to level ${player.safeZoneLevel}!`);
+                player.maxHealth += 50;
+                player.health = player.maxHealth;
+                game.updateStats();
+            } else {
+                game.log('Not enough points to upgrade Safe Zone.');
+            }
+        }
+
+        function shareScore(platform) {
+            const message = `I scored ${player.score} points in Undead Uprising: Survival's Edge! Can you beat my score?`;
+            let url;
+
+            switch(platform) {
+                case 'twitter':
+                    url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
+                    break;
+                case 'facebook':
+                    url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(message)}`;
+                    break;
+                case 'instagram':
+                    alert("To share on Instagram, take a screenshot of your score and post it to your Instagram story or feed!");
+                    return;
+            }
+
+            window.open(url, '_blank');
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverArea').style.display = 'none';
+            document.getElementById('setupArea').style.display = 'block';
+            stopBackgroundMusic();
+        }
+
+        function playBackgroundMusic() {
+            backgroundMusic.play().catch(e => console.log("Audio play failed:", e));
+        }
+
+        function stopBackgroundMusic() {
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+
+        function playZombieAttackSound() {
+            zombieAttackSound.play().catch(e => console.log("Audio play failed:", e));
+        }
+
+        // Day/Night Cycle
+        setInterval(() => {
+            game.isNight = !game.isNight;
+            game.day += game.isNight ? 0 : 1;
+            game.log(`It is now ${game.isNight ? 'night' : 'day'}.`);
+            if (game.isNight) {
+                game.log('Zombies are more active at night!');
+                zombies.forEach(zombie => zombie.speed *= 1.5);
+            } else {
+                zombies.forEach(zombie => zombie.speed /= 1.5);
+            }
+            game.updateStats();
+        }, 60000); // Change every minute for demonstration
+    </script>
+</body>
+</html>
