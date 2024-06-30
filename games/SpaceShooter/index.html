@@ -5,16 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Space Shooter</title>
     <style>
-        canvas {
-            border: 1px solid black;
-        }
+        body { margin: 0; padding: 0; overflow: hidden; }
+        #gameCanvas { display: block; }
+        #gameControls { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; }
+        #gameControls button { font-size: 24px; padding: 10px; }
+        #gameMenu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; }
+        #gameMenu button { font-size: 18px; margin: 10px; padding: 10px 20px; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameControls">
+        <button id="leftBtn">←</button>
+        <button id="fireBtn">🔥</button>
+        <button id="rightBtn">→</button>
+    </div>
+    <div id="gameMenu" style="display:none;">
+        <h2>Game Over</h2>
+        <p>Score: <span id="finalScore"></span></p>
+        <button id="restartBtn">Restart</button>
+        <button id="shareTwitter">Share on Twitter</button>
+        <button id="shareFacebook">Share on Facebook</button>
+        <div>
+            <label for="difficulty">Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let gameActive = true;
+        let difficulty = 'easy';
+        let rapidFireActive = false;
+        let lastShotTime = 0;
 
         const player = {
             x: canvas.width / 2,
@@ -26,6 +56,7 @@
 
         const bullets = [];
         const enemies = [];
+        const explosions = [];
         let score = 0;
 
         const playerImage = new Image();
@@ -51,27 +82,43 @@
             });
         }
 
+        function drawExplosions() {
+            explosions.forEach((explosion, index) => {
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 100, 0, ${1 - explosion.time / 30})`;
+                ctx.fill();
+                explosion.time++;
+                explosion.radius += 0.5;
+                if (explosion.time >= 30) {
+                    explosions.splice(index, 1);
+                }
+            });
+        }
+
         function drawScore() {
             ctx.fillStyle = 'white';
             ctx.font = '20px Arial';
             ctx.fillText(`Score: ${score}`, 10, 30);
         }
 
-        function movePlayer(e) {
-            if (e.key === 'ArrowLeft' && player.x > 0) {
+        function movePlayer(direction) {
+            if (direction === 'left' && player.x > 0) {
                 player.x -= player.speed;
-            } else if (e.key === 'ArrowRight' && player.x < canvas.width - player.width) {
+            } else if (direction === 'right' && player.x < canvas.width - player.width) {
                 player.x += player.speed;
             }
         }
 
-        function shoot(e) {
-            if (e.key === ' ') {
+        function shoot() {
+            const currentTime = Date.now();
+            if (currentTime - lastShotTime > (rapidFireActive ? 100 : 300)) {
                 bullets.push({
                     x: player.x + player.width / 2 - 2.5,
                     y: player.y,
                     speed: 7
                 });
+                lastShotTime = currentTime;
             }
         }
 
@@ -85,11 +132,14 @@
         }
 
         function updateEnemies() {
-            if (Math.random() < 0.02) {
+            const spawnRate = difficulty === 'easy' ? 0.02 : difficulty === 'medium' ? 0.03 : 0.04;
+            const enemySpeed = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 3 : 4;
+
+            if (Math.random() < spawnRate) {
                 enemies.push({
                     x: Math.random() * (canvas.width - 48),
                     y: 0,
-                    speed: 2
+                    speed: enemySpeed
                 });
             }
 
@@ -97,6 +147,7 @@
                 enemies[i].y += enemies[i].speed;
                 if (enemies[i].y > canvas.height) {
                     enemies.splice(i, 1);
+                    gameOver();
                 }
             }
         }
@@ -110,6 +161,12 @@
                         bullets[j].y < enemies[i].y + 48 &&
                         bullets[j].y + 15 > enemies[i].y
                     ) {
+                        explosions.push({
+                            x: enemies[i].x + 24,
+                            y: enemies[i].y + 24,
+                            radius: 5,
+                            time: 0
+                        });
                         enemies.splice(i, 1);
                         bullets.splice(j, 1);
                         score += 10;
@@ -120,6 +177,8 @@
         }
 
         function gameLoop() {
+            if (!gameActive) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Draw starfield background
@@ -138,6 +197,7 @@
             drawPlayer();
             drawBullets();
             drawEnemies();
+            drawExplosions();
             drawScore();
             
             updateBullets();
@@ -147,8 +207,54 @@
             requestAnimationFrame(gameLoop);
         }
 
-        document.addEventListener('keydown', movePlayer);
-        document.addEventListener('keydown', shoot);
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('gameMenu').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+        }
+
+        function restartGame() {
+            gameActive = true;
+            score = 0;
+            bullets.length = 0;
+            enemies.length = 0;
+            explosions.length = 0;
+            player.x = canvas.width / 2;
+            player.y = canvas.height - 100;
+            document.getElementById('gameMenu').style.display = 'none';
+            difficulty = document.getElementById('difficulty').value;
+            gameLoop();
+        }
+
+        function shareScore(platform) {
+            const text = `I scored ${score} points in Space Shooter!`;
+            const url = encodeURIComponent(window.location.href);
+            if (platform === 'twitter') {
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
+            } else if (platform === 'facebook') {
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${encodeURIComponent(text)}`, '_blank');
+            }
+        }
+
+        document.getElementById('leftBtn').addEventListener('touchstart', () => movePlayer('left'));
+        document.getElementById('rightBtn').addEventListener('touchstart', () => movePlayer('right'));
+        document.getElementById('fireBtn').addEventListener('touchstart', () => { rapidFireActive = true; shoot(); });
+        document.getElementById('fireBtn').addEventListener('touchend', () => { rapidFireActive = false; });
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+        document.getElementById('shareTwitter').addEventListener('click', () => shareScore('twitter'));
+        document.getElementById('shareFacebook').addEventListener('click', () => shareScore('facebook'));
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movePlayer('left');
+            if (e.key === 'ArrowRight') movePlayer('right');
+            if (e.key === ' ') shoot();
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            player.y = canvas.height - 100;
+        });
 
         gameLoop();
     </script>
