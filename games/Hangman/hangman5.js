@@ -1,6 +1,6 @@
 const words = {
     animals: {
-        easy: ["cat", "dog", "cow", "pig", "hen", "Mouse", "Wolf", "Sake", "Horse", "whale", "Bear", "Deer", "Fish", "Worm", "Frog", "Gecko", "Wren", "Finch", "Hawk"],
+        easy: ["cat", "dog", "cow", "pig", "hen", "Mouse", "wolf", "sake", "horse", "whale", "Bear", "Deer", "Fish", "Worm", "Frog", "Gecko", "Wren", "Finch", "Hawk"],
         medium: ["elephant", "giraffe", "penguin", "leopard", "kangaroo", "Wombat", "Ferret", "Badger", "Coyote", "Panda", "Koala", "Dingo", "Tapir", "Lemur", "Viper", "Iguana", "Macaw", "Donkey", "Opossum", "Guinea Pig", "Warthog", "Jackal", "Coyote", "Vole", "Heron", "Buzzard", "Cougar", "Viper", "Ferret", "Weasel", "Mongoose", "Prairie Dog", "Marmot", "Shrew", "Stoat", "Beaver", "Rabbit", "Vixen", "Falcon", "Kestrel", "Thrush", "Blackbird", "Robin", "Finch", "Sparrow", "Parrot", "Condor", "Vulture", "Cassowary", "Echidna", "Axolotl", "Manatee"],
         hard: ["platypus", "chimpanzee", "hippopotamus", "rhinoceros", "chameleon", "Gorilla", "Hippopotamus", "Rhinoceros", "Butterfly", "Alligator", "Chameleon", "Gazelle", "Kangaroo", "Orangutan", "Salamander", "Walrus", "Wolverine", "Zebra", "Narwhal", "Peacock", "Porcupine", "Rattlesnake", "Seahorse", "Secretarybird", "Starfish", "Swordfish", "Tarantula", "Termite", "Vulture", "Waterbuffalo", "Pangolin", "Saola", "Komondor", "Tardigrade", "Shoebill Stork"]
     },
