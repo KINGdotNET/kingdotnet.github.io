@@ -1,0 +1,45 @@
+body { 
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; 
+    font-family: Arial, sans-serif; 
+}
+#gameCanvas { 
+    display: block; 
+}
+#gameControls { 
+    position: absolute; 
+    bottom: 10px; 
+    left: 10px; 
+    right: 10px; 
+    display: flex; 
+    justify-content: space-between; 
+}
+#gameControls button { 
+    font-size: 24px; 
+    padding: 10px; 
+    opacity: 0.7; 
+}
+#gameMenu { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    text-align: center; 
+    background: rgba(0,0,0,0.8); 
+    padding: 20px; 
+    border-radius: 10px; 
+    color: white; 
+}
+#gameMenu button { 
+    font-size: 18px; 
+    margin: 10px; 
+    padding: 10px 20px; 
+}
+#hud { 
+    position: absolute; 
+    top: 10px; 
+    left: 10px; 
+    color: white; 
+    font-size: 18px; 
+}

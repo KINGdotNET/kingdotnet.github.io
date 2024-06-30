@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Space Shooter Deluxe</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameControls">
+        <button id="leftBtn">←</button>
+        <button id="fireBtn">🔥</button>
+        <button id="rightBtn">→</button>
+    </div>
+    <div id="hud">
+        <div>Score: <span id="scoreDisplay">0</span></div>
+        <div>Level: <span id="levelDisplay">1</span></div>
+        <div>Health: <span id="healthDisplay">100</span></div>
+    </div>
+    <div id="gameMenu" style="display:none;">
+        <h2>Game Over</h2>
+        <p>Score: <span id="finalScore"></span></p>
+        <p>High Score: <span id="highScore"></span></p>
+        <button id="restartBtn">Restart</button>
+        <button id="shareTwitter">Share on Twitter</button>
+        <button id="shareFacebook">Share on Facebook</button>
+        <div>
+            <label for="difficulty">Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
