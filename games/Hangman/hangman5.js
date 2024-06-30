@@ -1,18 +1,18 @@
 const words = {
     animals: {
-        easy: ["cat", "dog", "cow", "pig", "hen"],
-        medium: ["elephant", "giraffe", "penguin", "leopard", "kangaroo"],
-        hard: ["platypus", "chimpanzee", "hippopotamus", "rhinoceros", "chameleon"]
+        easy: ["cat", "dog", "cow", "pig", "hen", "Mouse", "Wolf", "Sake", "Horse", "whale", "Bear", "Deer", "Fish", "Worm", "Frog", "Gecko", "Wren", "Finch", "Hawk"],
+        medium: ["elephant", "giraffe", "penguin", "leopard", "kangaroo", "Wombat", "Ferret", "Badger", "Coyote", "Panda", "Koala", "Dingo", "Tapir", "Lemur", "Viper", "Iguana", "Macaw", "Donkey", "Opossum", "Guinea Pig", "Warthog", "Jackal", "Coyote", "Vole", "Heron", "Buzzard", "Cougar", "Viper", "Ferret", "Weasel", "Mongoose", "Prairie Dog", "Marmot", "Shrew", "Stoat", "Beaver", "Rabbit", "Vixen", "Falcon", "Kestrel", "Thrush", "Blackbird", "Robin", "Finch", "Sparrow", "Parrot", "Condor", "Vulture", "Cassowary", "Echidna", "Axolotl", "Manatee"],
+        hard: ["platypus", "chimpanzee", "hippopotamus", "rhinoceros", "chameleon", "Gorilla", "Hippopotamus", "Rhinoceros", "Butterfly", "Alligator", "Chameleon", "Gazelle", "Kangaroo", "Orangutan", "Salamander", "Walrus", "Wolverine", "Zebra", "Narwhal", "Peacock", "Porcupine", "Rattlesnake", "Seahorse", "Secretarybird", "Starfish", "Swordfish", "Tarantula", "Termite", "Vulture", "Waterbuffalo", "Pangolin", "Saola", "Komondor", "Tardigrade", "Shoebill Stork"]
     },
     countries: {
-        easy: ["usa", "china", "india", "brazil", "canada"],
-        medium: ["australia", "germany", "nigeria", "argentina", "sweden"],
-        hard: ["kazakhstan", "mozambique", "azerbaijan", "kyrgyzstan", "mauritius"]
+        easy: ["usa", "china", "india", "brazil", "canada", "Chad", "Chile", "China", "Cuba", "Egypt", "Fiji", "Ghana", "Haiti", "India", "Iran", "Iraq", "Italy", "Japan", "Kenya", "Laos", "Libya", "Mali", "Malta", "Nepal", "Niger", "Oman", "Peru", "Qatar", "Samoa", "Spain", "Sudan", "Syria", "Togo", "Tonga", "Yemen"],
+        medium: ["australia", "germany", "nigeria", "argentina", "sweden", "Argentina", "Australia", "Azerbaijan", "Bangladesh", "Colombia", "Democratic Republic of the Congo", "Denmark", "Ethiopia", "Indonesia", "Malaysia", "Netherlands", "Nicaragua", "New Zealand", "Nigeria", "Pakistan", "Philippines", "Portugal", "Romania", "Switzerland", "Thailand", "Venezuela", "Vietnam", "Zimbabwe"],
+        hard: ["kazakhstan", "mozambique", "azerbaijan", "kyrgyzstan", "mauritius", "United Kingdom", "South Africa", "United States", "Federated States of Micronesia", "Solomon Islands", "Marshall Islands", "Saint Vincent and the Grenadines", "Dominican Republic", "Saint Lucia", "Antigua and Barbuda", "Grenada", "Cook Islands", "Palau", "Tuvalu", "Kiribati", "Nauru", "Seychelles", "Madagascar", "Turkmenistan", "Bhutan", "Tajikistan", "Moldova", "Montenegro"]
     },
     fruits: {
-        easy: ["apple", "banana", "orange", "grape", "mango"],
-        medium: ["pineapple", "strawberry", "watermelon", "blueberry", "kiwi"],
-        hard: ["dragonfruit", "passionfruit", "lychee", "rambutan", "durian"]
+        easy: ["apple", "banana", "orange", "grape", "mango", "Fig", "Kiwi", "Date", "Plum", "Pear", "Mango", "Grape", "Peach", "Lime", "Berry"],
+        medium: ["pineapple", "strawberry", "watermelon", "blueberry", "kiwi", "Watermelon", "Grapefruit", "Pineapple", "Pomegranate", "Cantaloupe", "Honeydew", "Papaya", "Mangoesteen"],
+        hard: ["dragonfruit", "passionfruit", "lychee", "rambutan", "durian", "Passionfruit", "Starfruit", "Dragonfruit", "Rambutan", "Mangosteen", "Guavaberry", "Blackberry", "Gooseberry", "Cranberry", "Durianfruit", "Passionfruit", "Starfruit", "Dragonfruit", "Physalis", "Cupuacu", "Cherimoya"]
     }
 };
 
