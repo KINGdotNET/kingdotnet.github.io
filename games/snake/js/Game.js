@@ -14,7 +14,7 @@ class Game{
 	init(){					
 		this.snakes[0] = new Snake(this.ctxSnake, "kingnet", 0);		
 		for(var i=0; i<10; i++) this.addSnake(ut.randomName(), 100);		
-		this.generateFoods(5000);			
+		this.generateFoods(50000);			
 	}
 
 	draw(){		
