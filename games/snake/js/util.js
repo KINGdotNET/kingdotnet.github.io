@@ -30,7 +30,7 @@ class Util{
 	
 	randomName(){
 		var names = ['ram', 'shyam', 'hari', 'geeta', 'joe', 'john', 'harry', 'peter',
-		'david', 'kittykat', 'MAJ.com', 'QUE.com'];
+		'david', 'kittykat', 'MAJcom', 'QUEcom'];
 		return names[this.random(0, names.length-1)]
 	}
 
