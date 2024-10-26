@@ -1,5 +1,4 @@
-
-<script>
+// Start of Game - EM@KING.NET 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreDisplay = document.getElementById('score');
@@ -214,4 +213,4 @@ function shareScore(platform) {
 // Start game
 createEnemies();
 gameLoop();
-</script>
+
