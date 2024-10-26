@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Galaga Clone</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #000;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    #gameCanvas {
+      border: 2px solid #333;
+    }
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .share-buttons {
+      margin-top: 10px;
+    }
+    .share-buttons button {
+      margin: 0 5px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    #twitter { background: #1DA1F2; }
+    #facebook { background: #4267B2; }
+    #instagram { background: #E4405F; }
+    #score, #highscore {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <div id="highscore">High Score: 0</div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div class="controls">
+    <p>Use Arrow Keys to move, Space to shoot</p>
+    <div class="share-buttons">
+      <button id="twitter">Share on Twitter</button>
+      <button id="facebook">Share on Facebook</button>
+      <button id="instagram">Share on Instagram</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const highscoreElement = document.getElementById('highscore');
+
+    // Game state
+    let score = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    highscoreElement.textContent = `High Score: ${highScore}`;
+
+    // Player
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height - 50,
+      width: 30,
+      height: 30,
+      speed: 5,
+      bullets: []
+    };
+
+    // Enemies
+    const enemies = [];
+    const enemyRows = 3;
+    const enemiesPerRow = 6;
+    const enemyWidth = 30;
+    const enemyHeight = 30;
+    const enemyPadding = 20;
+
+    // Controls
+    const keys = {
+      left: false,
+      right: false,
+      space: false
+    };
+
+    // Initialize enemies
+    function initEnemies() {
+      for (let row = 0; row < enemyRows; row++) {
+        for (let col = 0; col < enemiesPerRow; col++) {
+          enemies.push({
+            x: col * (enemyWidth + enemyPadding) + 50,
+            y: row * (enemyHeight + enemyPadding) + 50,
+            width: enemyWidth,
+            height: enemyHeight,
+            direction: 1,
+            speed: 1
+          });
+        }
+      }
+    }
+
+    // Draw functions
+    function drawPlayer() {
+      ctx.fillStyle = '#0F0';
+      ctx.fillRect(player.x - player.width/2, player.y, player.width, player.height);
+    }
+
+    function drawEnemies() {
+      enemies.forEach(enemy => {
+        ctx.fillStyle = '#F00';
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+      });
+    }
+
+    function drawBullets() {
+      ctx.fillStyle = '#FFF';
+      player.bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x, bullet.y, 2, 10);
+      });
+    }
+
+    // Update game state
+    function update() {
+      // Move player
+      if (keys.left && player.x > player.width/2) player.x -= player.speed;
+      if (keys.right && player.x < canvas.width - player.width/2) player.x += player.speed;
+
+      // Move bullets
+      player.bullets.forEach(bullet => {
+        bullet.y -= 7;
+      });
+      player.bullets = player.bullets.filter(bullet => bullet.y > 0);
+
+      // Move enemies
+      let hitWall = false;
+      enemies.forEach(enemy => {
+        enemy.x += enemy.speed * enemy.direction;
+        if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+          hitWall = true;
+        }
+      });
+
+      if (hitWall) {
+        enemies.forEach(enemy => {
+          enemy.direction *= -1;
+          enemy.y += 20;
+        });
+      }
+
+      // Check collisions
+      player.bullets.forEach(bullet => {
+        enemies.forEach((enemy, index) => {
+          if (bullet.x >= enemy.x && bullet.x <= enemy.x + enemy.width &&
+              bullet.y >= enemy.y && bullet.y <= enemy.y + enemy.height) {
+            enemies.splice(index, 1);
+            score += 100;
+            scoreElement.textContent = `Score: ${score}`;
+            
+            if (score > highScore) {
+              highScore = score;
+              localStorage.setItem('highScore', highScore);
+              highscoreElement.textContent = `High Score: ${highScore}`;
+            }
+          }
+        });
+      });
+
+      // Check game over
+      enemies.forEach(enemy => {
+        if (enemy.y + enemy.height >= player.y) {
+          gameOver();
+        }
+      });
+
+      // Check win condition
+      if (enemies.length === 0) {
+        alert('You win! Starting new level...');
+        initEnemies();
+      }
+    }
+
+    function gameOver() {
+      alert('Game Over! Your score: ' + score);
+      score = 0;
+      scoreElement.textContent = `Score: ${score}`;
+      enemies.length = 0;
+      player.bullets.length = 0;
+      initEnemies();
+      player.x = canvas.width / 2;
+    }
+
+    // Game loop
+    function gameLoop() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      update();
+      drawPlayer();
+      drawEnemies();
+      drawBullets();
+      
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Event listeners
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') keys.left = true;
+      if (e.key === 'ArrowRight') keys.right = true;
+      if (e.key === ' ') {
+        if (!keys.space) {
+          player.bullets.push({
+            x: player.x,
+            y: player.y
+          });
+        }
+        keys.space = true;
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'ArrowRight') keys.right = false;
+      if (e.key === ' ') keys.space = false;
+    });
+
+    // Social sharing
+    document.getElementById('twitter').addEventListener('click', () => {
+      const text = `I scored ${score} points in Galaga! Can you beat my score?`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+    });
+
+    document.getElementById('facebook').addEventListener('click', () => {
+      const url = window.location.href;
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+    });
+
+    document.getElementById('instagram').addEventListener('click', () => {
+      alert('Share a screenshot on Instagram!');
+    });
+
+    // Start game
+    initEnemies();
+    gameLoop();
+  </script>
+</body>
+</html>

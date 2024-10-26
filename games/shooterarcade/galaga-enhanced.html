@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced Galaga</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+        }
+        canvas {
+            border: 2px solid #444;
+        }
+        #gameInfo {
+            width: 400px;
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        #controls {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .share-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .share-btn:hover {
+            background: #444;
+        }
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #444;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        #soundToggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameInfo">
+            <span id="score">Score: 0</span>
+            <span id="highScore">High Score: 0</span>
+        </div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <button id="soundToggle">🔊</button>
+        <div id="controls">
+            <p>← → to move, SPACE to shoot</p>
+            <button class="share-btn" onclick="shareScore('twitter')">Share on Twitter</button>
+            <button class="share-btn" onclick="shareScore('facebook')">Share on Facebook</button>
+        </div>
+    </div>
+    <div id="gameOver">
+        <h2>Game Over!</h2>
+        <p id="finalScore">Score: 0</p>
+        <button class="share-btn" onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // Sound effects
+        const sounds = {
+            shoot: new Audio('data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...'), // Base64 laser sound
+            explosion: new Audio('data:audio/wav;base64,UklGRh9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YT...'), // Base64 explosion sound
+            background: new Audio('data:audio/wav;base64,UklGRk9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YW...') // Base64 background music
+        };
+
+        // Load images
+        const images = {
+            player: new Image(),
+            enemy: new Image(),
+            background: new Image()
+        };
+
+        // Base64 encoded images
+        images.player.src = 'data:image/png;base64,...'; // Base64 player ship sprite
+        images.enemy.src = 'data:image/png;base64,...'; // Base64 enemy sprite
+        images.background.src = 'data:image/png;base64,...'; // Base64 space background
+
+        let soundEnabled = true;
+        let backgroundPos = 0;
+
+        // Game state
+        let gameState = {
+            score: 0,
+            highScore: localStorage.getItem('highScore') || 0,
+            isGameOver: false,
+            player: {
+                x: canvas.width / 2,
+                y: canvas.height - 50,
+                width: 40,
+                height: 40,
+                speed: 5,
+                bullets: []
+            },
+            enemies: [],
+            particles: [],
+            keys: {
+                left: false,
+                right: false,
+                space: false
+            },
+            lastShot: 0
+        };
+
+        // Initialize high score display
+        highScoreDisplay.textContent = `High Score: ${gameState.highScore}`;
+
+        // Particle system
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                gameState.particles.push({
+                    x,
+                    y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 1,
+                    color
+                });
+            }
+        }
+
+        function updateParticles() {
+            gameState.particles.forEach((particle, index) => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.life -= 0.02;
+                if (particle.life <= 0) {
+                    gameState.particles.splice(index, 1);
+                }
+            });
+        }
+
+        function drawParticles() {
+            gameState.particles.forEach(particle => {
+                ctx.globalAlpha = particle.life;
+                ctx.fillStyle = particle.color;
+                ctx.fillRect(particle.x, particle.y, 3, 3);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        // Create enemies
+        function createEnemies() {
+            const rows = 3;
+            const enemiesPerRow = 8;
+            const padding = 50;
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < enemiesPerRow; col++) {
+                    gameState.enemies.push({
+                        x: col * padding + 50,
+                        y: row * padding + 50,
+                        width: 30,
+                        height: 30,
+                        direction: 1,
+                        speed: 1
+                    });
+                }
+            }
+        }
+
+        // Draw functions
+        function drawBackground() {
+            backgroundPos += 0.5;
+            if (backgroundPos >= canvas.height) {
+                backgroundPos = 0;
+            }
+            ctx.drawImage(images.background, 0, backgroundPos - canvas.height, canvas.width, canvas.height);
+            ctx.drawImage(images.background, 0, backgroundPos, canvas.width, canvas.height);
+        }
+
+        function drawPlayer() {
+            ctx.drawImage(
+                images.player,
+                gameState.player.x - gameState.player.width / 2,
+                gameState.player.y,
+                gameState.player.width,
+                gameState.player.height
+            );
+        }
+
+        function drawEnemies() {
+            gameState.enemies.forEach(enemy => {
+                ctx.drawImage(
+                    images.enemy,
+                    enemy.x,
+                    enemy.y,
+                    enemy.width,
+                    enemy.height
+                );
+            });
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#0F0';
+            gameState.player.bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x - 1, bullet.y, 2, 10);
+            });
+        }
+
+        // Update game state
+        function update() {
+            if (gameState.isGameOver) return;
+
+            updateParticles();
+
+            // Move player
+            if (gameState.keys.left && gameState.player.x > gameState.player.width/2) {
+                gameState.player.x -= gameState.player.speed;
+            }
+            if (gameState.keys.right && gameState.player.x < canvas.width - gameState.player.width/2) {
+                gameState.player.x += gameState.player.speed;
+            }
+
+            // Update bullets
+            gameState.player.bullets.forEach(bullet => {
+                bullet.y -= 8;
+            });
+            gameState.player.bullets = gameState.player.bullets.filter(bullet => bullet.y > 0);
+
+            // Move enemies
+            let hitEdge = false;
+            gameState.enemies.forEach(enemy => {
+                enemy.x += enemy.speed * enemy.direction;
+                if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+                    hitEdge = true;
+                }
+            });
+
+            if (hitEdge) {
+                gameState.enemies.forEach(enemy => {
+                    enemy.direction *= -1;
+                    enemy.y += 20;
+                });
+            }
+
+            // Check collisions
+            gameState.player.bullets.forEach((bullet, bulletIndex) => {
+                gameState.enemies.forEach((enemy, enemyIndex) => {
+                    if (bullet.x >= enemy.x && bullet.x <= enemy.x + enemy.width &&
+                        bullet.y >= enemy.y && bullet.y <= enemy.y + enemy.height) {
+                        // Create explosion particles
+                        createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, '#F00');
+                        
+                        // Remove bullet and enemy
+                        gameState.player.bullets.splice(bulletIndex, 1);
+                        gameState.enemies.splice(enemyIndex, 1);
+                        
+                        // Play explosion sound
+                        if (soundEnabled) {
+                            sounds.explosion.cloneNode().play();
+                        }
+                        
+                        // Update score
+                        gameState.score += 100;
+                        updateScore();
+                    }
+                });
+            });
+
+            // Check game over conditions
+            gameState.enemies.forEach(enemy => {
+                if (enemy.y + enemy.height >= gameState.player.y) {
+                    endGame();
+                }
+            });
+
+            // Check win condition
+            if (gameState.enemies.length === 0) {
+                createEnemies(); // Start new level
+            }
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${gameState.score}`;
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('highScore', gameState.highScore);
+                highScoreDisplay.textContent = `High Score: ${gameState.highScore}`;
+            }
+        }
+
+        function endGame() {
+            gameState.isGameOver = true;
+            gameOverScreen.style.display = 'block';
+            finalScoreDisplay.textContent = `Final Score: ${gameState.score}`;
+            sounds.background.pause();
+        }
+
+        function restartGame() {
+            gameState.score = 0;
+            gameState.isGameOver = false;
+            gameState.player.bullets = [];
+            gameState.enemies = [];
+            gameState.particles = [];
+            gameState.player.x = canvas.width / 2;
+            createEnemies();
+            gameOverScreen.style.display = 'none';
+            updateScore();
+            if (soundEnabled) {
+                sounds.background.currentTime = 0;
+                sounds.background.play();
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            update();
+            drawPlayer();
+            drawEnemies();
+            drawBullets();
+            drawParticles();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') gameState.keys.left = true;
+            if (e.key === 'ArrowRight') gameState.keys.right = true;
+            if (e.key === ' ') {
+                if (!gameState.keys.space && !gameState.isGameOver) {
+                    gameState.player.bullets.push({
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    });
+                    if (soundEnabled) {
+                        sounds.shoot.cloneNode().play();
+                    }
+                }
+                gameState.keys.space = true;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') gameState.keys.left = false;
+            if (e.key === 'ArrowRight') gameState.keys.right = false;
+            if (e.key === ' ') gameState.keys.space = false;
+        });
+
+        // Sound toggle
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+            if (soundEnabled) {
+                sounds.background.play();
+            } else {
+                sounds.background.pause();
+            }
+        });
+
+        // Social sharing
+        function shareScore(platform) {
+            const text = `I scored ${gameState.score} points in Galaga! Can you beat my score?`;
+            const url = window.location.href;
+            
+            if (platform === 'twitter') {
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+            } else if (platform === 'facebook') {
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+            }
+        }
+
+        // Start game
+        window.onload = () => {
+            createEnemies();
+            if (soundEnabled) {
+                sounds.background.loop = true;
+                sounds.background.volume = 0.5;
+                sounds.background.play();
+            }
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
