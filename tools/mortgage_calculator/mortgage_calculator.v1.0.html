@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) for KING.NET -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-1YBTCKFKLZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-1YBTCKFKLZ');
+  </script>
+
+
+<meta charset="utf-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="https://king.net/games/images/favicon-kingnet.ico">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet" type="text/css">
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet" type="text/css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+
+<!-- 20230927 Adsense by EM@KING.NET -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5903031199985375"
+crossorigin="anonymous"></script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mortgage Calculator | KING.NET</title>
+<link rel="stylesheet" href="style.css">
+
+    <style>
+
+    body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        canvas {
+            border: 2px solid #444;
+        }
+        #gameInfo {
+            width: 400px;
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        #controls {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .share-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .share-btn:hover {
+            background: #444;
+        }
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #444;
+        }
+
+        
+        /* 20241004 append Navigation StyleSheet EM@KING.NET */
+        .navbar {
+        margin-bottom: 0;
+        background-color: #f4511e;
+        z-index: 9999;
+        border: 0;
+        font-size: 12px !important;
+        line-height: 1.42857143 !important;
+        letter-spacing: 4px;
+        border-radius: 0;
+        font-family: Montserrat, sans-serif;
+        }
+        .navbar li a, .navbar .navbar-brand {
+            color: #fff !important;
+        }
+        .navbar-nav li a:hover, .navbar-nav li.active a {
+            color: #f4511e !important;
+            background-color: #fff !important;
+        }
+        .navbar-default .navbar-toggle {
+            border-color: transparent;
+            color: #fff !important;
+        }        
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>                        
+            </button>
+            <a class="navbar-brand" href="../"><b>KING.NET</b></a>
+          </div>
+          <div class="collapse navbar-collapse" id="myNavbar">
+            <ul class="nav navbar-nav navbar-right">
+              <li><a href="https://king.net/games/index.html#about">ABOUT</a></li>
+              <li><a href="https://king.net/games/index.html#portfolio">GAMES</a></li>
+              <li><a href="https://que.com/kingbuzz">BLOG</a></li>        
+              <li><a href="https://que.com/games" target="_blank">Sponsored by QUE.com</a></li>
+            </ul>
+          </div>
+        </div>
+      </nav>  
+<br><br>
+
+
+<div class="container">
+    <h1>Mortgage Calculator | <a href="https://king.net"><b>KING.NET</b></a></h1>
+    <div class="input-group">
+        <label for="loanAmount">Loan Amount:</label>
+        <input type="number" id="loanAmount" placeholder="e.g., 200000">
+    </div>
+     <div class="input-group">
+        <label for="downPayment">Down Payment:</label>
+        <input type="number" id="downPayment" placeholder="e.g., 20000">
+    </div>
+    <div class="input-group">
+        <label for="interestRate">Annual Interest Rate (%):</label>
+        <input type="number" id="interestRate" placeholder="e.g., 5.0">
+    </div>
+    <div class="input-group">
+        <label for="loanTerm">Loan Term (Years):</label>
+        <input type="number" id="loanTerm" placeholder="e.g., 30">
+    </div>
+    <div class="input-group">
+        <label for="propertyTax">Annual Property Tax:</label>
+        <input type="number" id="propertyTax" placeholder="e.g., 2400">
+    </div>
+    <div class="input-group">
+         <label for="insurance">Annual Home Insurance:</label>
+        <input type="number" id="insurance" placeholder="e.g., 1200">
+    </div>
+    <button id="calculateBtn">Calculate</button>
+    <div id="result" class="result"></div>
+    <div id="amortization" class="amortization"></div>
+</div>
+<script src="script.js"></script>
+
+</center>
+</body>
+</html>
