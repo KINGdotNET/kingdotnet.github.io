@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Calculator | KING.NET</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mortgage Calculator | <a href="https://king.net"><b>KING.NET</b></a></h1>
+        <div class="input-group">
+            <label for="loanAmount">Loan Amount:</label>
+            <input type="number" id="loanAmount" placeholder="e.g., 200000">
+        </div>
+         <div class="input-group">
+            <label for="downPayment">Down Payment:</label>
+            <input type="number" id="downPayment" placeholder="e.g., 20000">
+        </div>
+        <div class="input-group">
+            <label for="interestRate">Annual Interest Rate (%):</label>
+            <input type="number" id="interestRate" placeholder="e.g., 5.0">
+        </div>
+        <div class="input-group">
+            <label for="loanTerm">Loan Term (Years):</label>
+            <input type="number" id="loanTerm" placeholder="e.g., 30">
+        </div>
+        <div class="input-group">
+            <label for="propertyTax">Annual Property Tax:</label>
+            <input type="number" id="propertyTax" placeholder="e.g., 2400">
+        </div>
+        <div class="input-group">
+             <label for="insurance">Annual Home Insurance:</label>
+            <input type="number" id="insurance" placeholder="e.g., 1200">
+        </div>
+        <button id="calculateBtn">Calculate</button>
+        <div id="result" class="result"></div>
+        <div id="amortization" class="amortization"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
