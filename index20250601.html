@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING.NET - FREE Games for Life</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/x-icon" href="https://king.net/games/images/favicon-kingnet.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5903031199985375"
+     crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom transition for the mobile menu */
+        .mobile-menu-transition {
+            transition: transform 0.3s ease-out, opacity 0.2s ease-out;
+        }
+        .mobile-menu-closed {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        .mobile-menu-open {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        /* Styling for the backdrop */
+        .menu-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Styling for form messages */
+        .form-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.875rem; /* text-sm */
+            text-align: center;
+        }
+        .form-message-success {
+            background-color: #D1FAE5; /* bg-green-100 */
+            color: #065F46; /* text-green-700 */
+        }
+        .form-message-error {
+            background-color: #FEE2E2; /* bg-red-100 */
+            color: #991B1B; /* text-red-700 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold tracking-tight">KING.NET</a>
+
+            <nav class="hidden md:flex space-x-6">
+                <a href="#about" class="hover:text-yellow-300 transition duration-150">About Us</a>
+                <a href="#contact" class="hover:text-yellow-300 transition duration-150">Contact</a>
+                <a href="#games" class="hover:text-yellow-300 transition duration-150">Games List</a>
+            </nav>
+
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-white focus:outline-none">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden menu-backdrop"></div>
+
+    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-3/4 max-w-sm bg-white shadow-xl z-40 mobile-menu-transition mobile-menu-closed md:hidden">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-semibold text-gray-800">Menu</h2>
+                <button id="close-menu-button" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="flex flex-col space-y-5">
+                <a href="#about" class="block py-2 px-3 text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded-md transition duration-150 text-lg menu-item">About Us</a>
+                <a href="#contact" class="block py-2 px-3 text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded-md transition duration-150 text-lg menu-item">Contact</a>
+                <a href="#games" class="block py-2 px-3 text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded-md transition duration-150 text-lg menu-item">Games List</a>
+            </nav>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200">
+            <p class="text-center text-sm text-gray-500">&copy; <span id="currentYear"></span> KING.NET</p>
+        </div>
+    </div>
+
+    <main class="container mx-auto p-4">
+        <section id="about" class="min-h-screen bg-white rounded-lg shadow p-6 my-4">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-6">About Us</h2>
+            <p class="text-gray-600 leading-relaxed mb-6">Welcome to KING.NET! We are passionate about creating amazing online experiences. Our mission is to deliver top-notch entertainment and useful services to our users. Learn more about our journey, our team, and what drives us to innovate every day. We believe in the power of technology to connect and inspire.</p>
+
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-purple-700 mb-3">Our Vision</h3>
+                <p class="text-gray-600 leading-relaxed">To be the leading global platform for accessible and engaging online entertainment, fostering a vibrant community where everyone can discover, play, and connect.</p>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-purple-700 mb-3">Our Mission</h3>
+                <p class="text-gray-600 leading-relaxed">To provide a diverse range of high-quality, free-to-play games and innovative online services, leveraging cutting-edge technology and user-centric design to create joyful and memorable experiences for people of all ages worldwide.</p>
+            </div>
+
+            <img src="https://placehold.co/600x300/A0AEC0/FFFFFF?text=Our+Team+Spirit" alt="About Us Placeholder - Our Team Spirit" class="mt-4 rounded-lg shadow-md w-full h-auto object-cover" onerror="this.src='https://placehold.co/600x300/CCCCCC/FFFFFF?text=Image+Not+Found'">
+        </section>
+
+        <section id="contact" class="min-h-screen bg-white rounded-lg shadow p-6 my-4">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Contact</h2>
+            <p class="text-gray-600 leading-relaxed">Get in touch with us! Whether you have a question, a suggestion, or just want to say hello, we'd love to hear from you. You can reach us through the form below, or connect with us on social media. Our team is always ready to assist you.</p>
+             <form id="contactForm" class="mt-6 space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" name="name" id="name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="John Doe" required>
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" name="email" id="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="you@example.com" required>
+                </div>
+                <div>
+                    <label for="message" class="block text-sm font-medium text-gray-700">Message</label>
+                    <textarea id="message" name="message" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="Your message..." required></textarea>
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                        Send Message
+                    </button>
+                </div>
+            </form>
+            <div id="form-message-container"></div>
+        </section>
+
+        <section id="games" class="min-h-screen bg-white rounded-lg shadow p-6 my-4">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-4">Games List</h2>
+            <p class="text-gray-600 leading-relaxed mb-6">Explore our exciting collection of games from KING.NET! We offer a variety of genres to suit every taste. Dive into adventure, solve challenging puzzles, or compete with friends. New games are added regularly, so there's always something fresh to discover.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/818CF8/FFFFFF?text=Flappy+Bird" alt="Flappy Bird" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Flappy+Bird+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Flappy Bird</h3>
+                        <p class="text-gray-600 text-sm mb-3">Play the classic Flappy Bird game and test your skills!</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/FBBF24/FFFFFF?text=GuessMe+Memory+Game" alt="GuessMe.com - Memory Card Game" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Memory+Game+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">GuessMe.com - Memory Card Game</h3>
+                        <p class="text-gray-600 text-sm mb-3">Challenge your memory with this fun card matching game.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/34D399/FFFFFF?text=Advanced+Math+Game" alt="Advanced Math Game" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Math+Game+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Advanced Math Game</h3>
+                        <p class="text-gray-600 text-sm mb-3">Sharpen your math skills with challenging problems.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/A78BFA/FFFFFF?text=Hangman+Game" alt="Hangman Game" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Hangman+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Hangman Game</h3>
+                        <p class="text-gray-600 text-sm mb-3">Guess the letters and solve the word puzzle!</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                 <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/F87171/FFFFFF?text=Tanks" alt="Tanks" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Tanks+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Tanks</h3>
+                        <p class="text-gray-600 text-sm mb-3">Engage in exciting tank battles.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/60A5FA/FFFFFF?text=Sliter+Game" alt="Sliter Game" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Sliter+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Sliter Game</h3>
+                        <p class="text-gray-600 text-sm mb-3">Grow your slithering creature and dominate the arena.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/F472B6/FFFFFF?text=Insect+Invasion" alt="Insect Invasion" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Insect+Invasion+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Insect Invasion</h3>
+                        <p class="text-gray-600 text-sm mb-3">Defend against hordes of invading insects.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Play Now</a>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <img src="https://placehold.co/400x250/FB923C/FFFFFF?text=Mortgage+Calculator" alt="Real Estate Mortgage Calculator" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x250/CCCCCC/FFFFFF?text=Mortgage+Calculator+Img'">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold text-purple-700 mb-2">Real Estate Mortgage Calculator</h3>
+                        <p class="text-gray-600 text-sm mb-3">A handy tool for calculating mortgage payments.</p>
+                        <a href="https://king.net/games/" target="_blank" rel="noopener noreferrer" class="inline-block bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition duration-150 text-sm font-medium">Use Tool</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Get DOM elements for mobile menu
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuBackdrop = document.getElementById('mobile-menu-backdrop');
+        const closeMenuButton = document.getElementById('close-menu-button');
+        const menuItems = mobileMenu.querySelectorAll('.menu-item'); // Get all menu items
+
+        // Function to open the mobile menu
+        function openMenu() {
+            mobileMenu.classList.remove('mobile-menu-closed');
+            mobileMenu.classList.add('mobile-menu-open');
+            mobileMenuBackdrop.classList.remove('hidden');
+            mobileMenuBackdrop.style.opacity = '1'; // Animate backdrop opacity
+            document.body.style.overflow = 'hidden'; // Prevent scrolling of background content
+        }
+
+        // Function to close the mobile menu
+        function closeMenu() {
+            mobileMenu.classList.add('mobile-menu-closed');
+            mobileMenu.classList.remove('mobile-menu-open');
+            mobileMenuBackdrop.style.opacity = '0'; // Animate backdrop opacity
+            // Hide backdrop after transition
+            setTimeout(() => {
+                mobileMenuBackdrop.classList.add('hidden');
+            }, 300); // Match backdrop transition duration
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+
+        // Event listener for the hamburger icon
+        if (mobileMenuButton) {
+            mobileMenuButton.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent click from bubbling up to document
+                openMenu();
+            });
+        }
+
+        // Event listener for the close button inside the menu
+        if (closeMenuButton) {
+            closeMenuButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                closeMenu();
+            });
+        }
+
+        // Event listener for the backdrop (to close menu when clicking outside)
+        if (mobileMenuBackdrop) {
+            mobileMenuBackdrop.addEventListener('click', () => {
+                closeMenu();
+            });
+        }
+
+        // Event listener for menu items (to close menu on navigation)
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                closeMenu();
+                // Optional: smooth scroll to section if href is an anchor
+                const targetId = item.getAttribute('href');
+                if (targetId && targetId.startsWith('#')) {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        // Timeout to allow menu to close before scrolling
+                        setTimeout(() => {
+                           targetElement.scrollIntoView({ behavior: 'smooth' });
+                        }, 300); // Adjust delay if needed
+                    }
+                }
+            });
+        });
+
+        // Close menu if user presses Escape key
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && mobileMenu.classList.contains('mobile-menu-open')) {
+                closeMenu();
+            }
+        });
+
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Contact Form Handling
+        const contactForm = document.getElementById('contactForm');
+        const formMessageContainer = document.getElementById('form-message-container');
+
+        if (contactForm) {
+            contactForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                // Clear previous messages
+                formMessageContainer.innerHTML = '';
+
+                // Get form data
+                const formData = new FormData(contactForm);
+                const name = formData.get('name');
+                const email = formData.get('email');
+                const message = formData.get('message');
+
+                // Basic validation (though `required` attribute handles empty fields)
+                if (!name || !email || !message) {
+                    displayFormMessage('Please fill out all fields.', 'error');
+                    return;
+                }
+
+                // Log data to console (for demonstration)
+                console.log('Contact Form Submitted:');
+                console.log('Name:', name);
+                console.log('Email:', email);
+                console.log('Message:', message);
+
+                // Simulate sending data (replace with actual AJAX call to backend or service)
+                // For example, using Fetch API:
+                /*
+                fetch('YOUR_BACKEND_ENDPOINT_OR_FORM_SERVICE_URL', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, message }),
+                })
+                .then(response => response.json()) // Or response.text() depending on backend
+                .then(data => {
+                    console.log('Success:', data);
+                    displayFormMessage('Message sent successfully!', 'success');
+                    contactForm.reset(); // Clear the form
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    displayFormMessage('An error occurred. Please try again.', 'error');
+                });
+                */
+
+                // For this static example, we'll just show a success message directly
+                displayFormMessage('Thank you for your message! We will get back to you soon. (This is a demo - data logged to console).', 'success');
+                contactForm.reset(); // Clear the form after successful "submission"
+            });
+        }
+
+        // Function to display form submission messages
+        function displayFormMessage(message, type) {
+            formMessageContainer.innerHTML = ''; // Clear previous messages
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = message;
+            messageDiv.className = `form-message ${type === 'success' ? 'form-message-success' : 'form-message-error'}`;
+            formMessageContainer.appendChild(messageDiv);
+
+            // Optional: auto-hide message after some time
+            setTimeout(() => {
+                if (formMessageContainer.contains(messageDiv)) {
+                    messageDiv.remove();
+                }
+            }, 5000); // Hide after 5 seconds
+        }
+
+    </script>
+
+</body>
+</html>
