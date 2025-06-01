@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Four</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for Connect Four game board */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+            max-width: 100%;
+            width: 600px; /* Max width for desktop */
+            box-sizing: border-box;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr); /* 7 columns */
+            grid-template-rows: repeat(6, 1fr);    /* 6 rows */
+            background-color: #4a90e2; /* Connect Four blue */
+            border-radius: 12px;
+            padding: 10px;
+            gap: 5px; /* Gap between cells */
+            aspect-ratio: 7 / 6; /* Maintain aspect ratio for the board */
+            width: 100%;
+            margin: 20px auto;
+            box-sizing: border-box;
+        }
+
+        .cell {
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Make cells square */
+            background-color: #ffffff; /* White background for empty holes */
+            border-radius: 50%; /* Circular holes */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden; /* Hide token overflow during animation */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            box-sizing: border-box;
+        }
+
+        .cell.player-1 {
+            background-color: #ff6b6b; /* Red token */
+        }
+
+        .cell.player-2 {
+            background-color: #feca57; /* Yellow token */
+        }
+
+        /* Token animation */
+        .token-drop {
+            animation: drop-token 0.5s ease-out forwards;
+        }
+
+        @keyframes drop-token {
+            0% {
+                transform: translateY(-1000%); /* Start far above */
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Hover effect for columns */
+        .column-hover-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10; /* Ensure it's above cells */
+            cursor: pointer;
+        }
+
+        .column-hover-area:hover .cell:not(.player-1):not(.player-2) {
+            background-color: #e0e0e0; /* Light gray on hover for empty cells */
+        }
+
+        .player-indicator {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 1rem; /* mb-4 */
+        }
+
+        .player-indicator.player-1-turn {
+            color: #ff6b6b; /* Red for Player 1's turn */
+        }
+
+        .player-indicator.player-2-turn {
+            color: #feca57; /* Yellow for Player 2's turn */
+        }
+
+        .message {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            margin-top: 1rem; /* mt-4 */
+            color: #333;
+        }
+
+        .reset-button {
+            background-color: #4a90e2; /* Blue */
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            border: none;
+        }
+
+        .reset-button:hover {
+            background-color: #357bd8;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+            }
+            .game-board {
+                padding: 5px;
+                gap: 3px;
+            }
+            .player-indicator {
+                font-size: 1rem;
+            }
+            .message {
+                font-size: 1.25rem;
+            }
+            .reset-button {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="game-container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Connect Four</h1>
+        <div id="player-turn" class="player-indicator player-1-turn">Player 1's Turn (Red)</div>
+        <div id="game-board" class="game-board">
+            </div>
+        <div id="game-message" class="message hidden"></div>
+        <button id="reset-button" class="reset-button">Play Again</button>
+    </div>
+
+    <script>
+        // Game Constants
+        const ROWS = 6;
+        const COLS = 7;
+        const PLAYER_1 = 1; // Represents Red tokens (now AI)
+        const PLAYER_2 = 2; // Represents Yellow tokens (Human Player)
+        const EMPTY = 0;    // Represents empty slots
+        const AI_PLAYER = PLAYER_1; // Define AI as Player 1
+
+        // Game State Variables
+        let board = [];
+        let currentPlayer = PLAYER_1;
+        let gameOver = false;
+
+        // DOM Elements
+        const gameBoardElement = document.getElementById('game-board');
+        const playerTurnElement = document.getElementById('player-turn');
+        const gameMessageElement = document.getElementById('game-message');
+        const resetButton = document.getElementById('reset-button');
+
+        /**
+         * Initializes the game board and UI.
+         * Sets up the 2D array for the board and creates the HTML elements.
+         */
+        function initializeGame() {
+            // Reset game state
+            board = Array(ROWS).fill(0).map(() => Array(COLS).fill(EMPTY));
+            currentPlayer = PLAYER_1;
+            gameOver = false;
+
+            // Clear previous board elements
+            gameBoardElement.innerHTML = '';
+            gameMessageElement.classList.add('hidden');
+            gameMessageElement.textContent = '';
+            updatePlayerTurnDisplay();
+
+            // Create cells for the game board
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    gameBoardElement.appendChild(cell);
+                }
+            }
+
+            // Add click listeners to columns using event delegation on the board
+            // This allows clicking anywhere in a column to drop a token
+            gameBoardElement.addEventListener('click', handleBoardClick);
+            resetButton.addEventListener('click', initializeGame); // Re-attach listener for reset
+
+            // If AI is Player 1, make the first move
+            if (currentPlayer === AI_PLAYER) {
+                setTimeout(makeAIMove, 1000); // Add a delay for AI's first move
+            }
+        }
+
+        /**
+         * Handles clicks on the game board to drop a token.
+         * Determines which column was clicked and attempts to drop a token there.
+         * This function is primarily for the human player's interaction.
+         * @param {Event} event The click event.
+         */
+        function handleBoardClick(event) {
+            if (gameOver || currentPlayer === AI_PLAYER) return; // Do nothing if game is over or it's AI's turn
+
+            // Calculate the column index based on the click position
+            const boardRect = gameBoardElement.getBoundingClientRect();
+            const clickX = event.clientX - boardRect.left;
+            const colIndex = Math.floor(clickX / (boardRect.width / COLS));
+
+            if (colIndex >= 0 && colIndex < COLS) {
+                dropToken(colIndex);
+            }
+        }
+
+        /**
+         * Drops a token into the specified column.
+         * Finds the lowest available row in the column and updates the board.
+         * @param {number} col The column index where the token is to be dropped.
+         */
+        function dropToken(col) {
+            // Find the lowest empty row in the selected column
+            let row = -1;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === EMPTY) {
+                    row = r;
+                    break;
+                }
+            }
+
+            // If the column is full, do nothing
+            if (row === -1) {
+                console.log(`Column ${col} is full.`);
+                // If it's a human player, provide a visual cue or message
+                if (currentPlayer !== AI_PLAYER) {
+                    gameMessageElement.textContent = "Column is full! Choose another.";
+                    gameMessageElement.classList.remove('hidden');
+                    setTimeout(() => {
+                        gameMessageElement.classList.add('hidden');
+                        gameMessageElement.textContent = '';
+                    }, 1500); // Hide message after 1.5 seconds
+                }
+                return;
+            }
+
+            // Update the board state
+            board[row][col] = currentPlayer;
+
+            // Update the UI
+            const cellElement = gameBoardElement.children[row * COLS + col];
+            cellElement.classList.add(`player-${currentPlayer}`);
+            cellElement.classList.add('token-drop'); // Add animation class
+
+            // Remove animation class after it completes to allow re-triggering on next drop
+            cellElement.addEventListener('animationend', () => {
+                cellElement.classList.remove('token-drop');
+            }, { once: true });
+
+
+            // Check for win or draw after dropping the token
+            if (checkWin(row, col)) {
+                gameMessageElement.textContent = `Player ${currentPlayer === AI_PLAYER ? 'AI' : 'Human'} Wins!`;
+                gameMessageElement.classList.remove('hidden');
+                gameOver = true;
+                gameBoardElement.removeEventListener('click', handleBoardClick); // Disable clicks
+            } else if (checkDraw()) {
+                gameMessageElement.textContent = "It's a Draw!";
+                gameMessageElement.classList.remove('hidden');
+                gameOver = true;
+                gameBoardElement.removeEventListener('click', handleBoardClick); // Disable clicks
+            } else {
+                // Switch to the next player
+                currentPlayer = (currentPlayer === PLAYER_1) ? PLAYER_2 : PLAYER_1;
+                updatePlayerTurnDisplay();
+
+                // If it's AI's turn, make AI move after a short delay
+                if (currentPlayer === AI_PLAYER && !gameOver) {
+                    setTimeout(makeAIMove, 1000); // 1 second delay for AI move
+                }
+            }
+        }
+
+        /**
+         * Updates the display to show whose turn it is.
+         */
+        function updatePlayerTurnDisplay() {
+            let playerText = '';
+            let playerClass = '';
+            if (currentPlayer === PLAYER_1) {
+                playerText = 'AI\'s Turn (Red)';
+                playerClass = 'player-1-turn';
+            } else {
+                playerText = 'Your Turn (Yellow)';
+                playerClass = 'player-2-turn';
+            }
+            playerTurnElement.textContent = playerText;
+            playerTurnElement.classList.remove('player-1-turn', 'player-2-turn');
+            playerTurnElement.classList.add(playerClass);
+        }
+
+        /**
+         * AI Logic: Determines the best move for the AI.
+         * This is a simple AI that prioritizes:
+         * 1. Winning move for itself.
+         * 2. Blocking opponent's winning move.
+         * 3. Making a random valid move.
+         */
+        function makeAIMove() {
+            if (gameOver) return;
+
+            let bestCol = -1;
+
+            // Strategy 1: Check for a winning move for AI
+            for (let c = 0; c < COLS; c++) {
+                let r = getNextAvailableRow(c);
+                if (r !== -1) {
+                    board[r][c] = AI_PLAYER; // Temporarily place AI token
+                    if (checkWin(r, c)) {
+                        bestCol = c;
+                        board[r][c] = EMPTY; // Revert
+                        dropToken(bestCol);
+                        return;
+                    }
+                    board[r][c] = EMPTY; // Revert
+                }
+            }
+
+            // Strategy 2: Check for opponent's winning move and block it
+            for (let c = 0; c < COLS; c++) {
+                let r = getNextAvailableRow(c);
+                if (r !== -1) {
+                    board[r][c] = PLAYER_2; // Temporarily place opponent token
+                    if (checkWin(r, c)) {
+                        bestCol = c;
+                        board[r][c] = EMPTY; // Revert
+                        dropToken(bestCol);
+                        return;
+                    }
+                    board[r][c] = EMPTY; // Revert
+                }
+            }
+
+            // Strategy 3: If no immediate win or block, make a random valid move
+            const validCols = [];
+            for (let c = 0; c < COLS; c++) {
+                if (getNextAvailableRow(c) !== -1) {
+                    validCols.push(c);
+                }
+            }
+
+            if (validCols.length > 0) {
+                bestCol = validCols[Math.floor(Math.random() * validCols.length)];
+            } else {
+                // This case should ideally not be reached if checkDraw is working correctly
+                console.log("No valid moves for AI, but game not declared draw yet.");
+                return;
+            }
+
+            dropToken(bestCol);
+        }
+
+        /**
+         * Helper function to get the next available row in a given column.
+         * @param {number} col The column index.
+         * @returns {number} The row index of the next available slot, or -1 if column is full.
+         */
+        function getNextAvailableRow(col) {
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === EMPTY) {
+                    return r;
+                }
+            }
+            return -1; // Column is full
+        }
+
+        /**
+         * Checks if the current player has won the game.
+         * Checks horizontal, vertical, and both diagonal lines from the last dropped token.
+         * @param {number} row The row of the last dropped token.
+         * @param {number} col The column of the last dropped token.
+         * @returns {boolean} True if the current player has won, false otherwise.
+         */
+        function checkWin(row, col) {
+            const player = board[row][col];
+
+            // Check horizontal (left to right)
+            // Sum of consecutive tokens to the right and to the left of the placed token.
+            // If sum is 3 or more, it means 4 or more in a row (including the placed token).
+            if (checkLine(row, col, 0, 1, player) + checkLine(row, col, 0, -1, player) >= 3) return true;
+            // Check vertical (downwards only, as tokens only drop)
+            // Only need to check downwards from the placed token.
+            if (checkLine(row, col, 1, 0, player) >= 3) return true;
+            // Check diagonal (top-left to bottom-right)
+            // Sum of consecutive tokens in top-left direction and bottom-right direction.
+            if (checkLine(row, col, 1, 1, player) + checkLine(row, col, -1, -1, player) >= 3) return true;
+            // Check diagonal (top-right to bottom-left)
+            // Sum of consecutive tokens in top-right direction and bottom-left direction.
+            if (checkLine(row, col, 1, -1, player) + checkLine(row, col, -1, 1, player) >= 3) return true;
+
+            return false;
+        }
+
+        /**
+         * Helper function to check a line in a specific direction for 4 in a row.
+         * Counts consecutive tokens of the same player starting from (startRow, startCol)
+         * in the direction (dRow, dCol).
+         * @param {number} startRow The starting row.
+         * @param {number} startCol The starting column.
+         * @param {number} dRow The row increment for the direction.
+         * @param {number} dCol The column increment for the direction.
+         * @param {number} player The player whose tokens to count.
+         * @returns {number} The number of consecutive tokens found (excluding the starting token).
+         */
+        function checkLine(startRow, startCol, dRow, dCol, player) {
+            let count = 0;
+            let r = startRow + dRow;
+            let c = startCol + dCol;
+
+            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                count++;
+                r += dRow;
+                c += dCol;
+            }
+            return count;
+        }
+
+        /**
+         * Checks if the game is a draw (board is full and no winner).
+         * @returns {boolean} True if the game is a draw, false otherwise.
+         */
+        function checkDraw() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] === EMPTY) {
+                        return false; // Found an empty cell, not a draw yet
+                    }
+                }
+            }
+            return true; // Board is full, and no winner means it's a draw
+        }
+
+        // Initialize the game when the page loads
+        window.onload = initializeGame;
+    </script>
+</body>
+</html>
