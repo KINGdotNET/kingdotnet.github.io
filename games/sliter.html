@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<!-- 20250601 Adsense by EM@KING.NET -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5903031199985375"
+     crossorigin="anonymous"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Slither Game with Gemini AI</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none; /* Prevents scrolling and other default touch actions */
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        #score {
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin: 0;
+        }
+        
+        #skin-customizer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        #skin-prompt {
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        #generate-skin-btn {
+            background: linear-gradient(145deg, #8e44ad, #9b59b6);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #generate-skin-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+
+        #joystick-container {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(128, 128, 128, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #joystick-knob {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+        }
+        
+        #gameOverModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .modal-content {
+            background-color: #222;
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #555;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        #gameOverModal h2 {
+            font-size: 3em;
+            color: #ff4757;
+            margin: 0 0 10px 0;
+        }
+        
+        #pep-talk-container {
+            margin-top: 20px;
+            min-height: 50px;
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            font-style: italic;
+            color: #ccc;
+        }
+        
+        .ai-btn {
+             background: linear-gradient(145deg, #0097e6, #00a8ff);
+             padding: 10px 20px;
+             font-size: 1em;
+             margin-top: 15px;
+        }
+
+        #restartBtn {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            color: white;
+            background-color: #2ed573;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div class="ui-panel">
+             <p id="score">Score: 0</p>
+        </div>
+       
+        <div id="skin-customizer">
+            <input type="text" id="skin-prompt" placeholder="Describe a snake skin...">
+            <button id="generate-skin-btn">✨ Generate Skin</button>
+        </div>
+
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+    </div>
+    
+    <div id="gameOverModal" style="display: none;">
+        <div class="modal-content">
+            <h2>Game Over</h2>
+            <p id="finalScoreText">Your score: 0</p>
+            
+            <div id="pep-talk-container">Click below for a pep talk!</div>
+            <button id="pep-talk-btn" class="ai-btn">✨ Get AI Pep Talk</button>
+            
+            <button id="restartBtn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const finalScoreText = document.getElementById('finalScoreText');
+        const restartBtn = document.getElementById('restartBtn');
+        const pepTalkBtn = document.getElementById('pep-talk-btn');
+        const pepTalkContainer = document.getElementById('pep-talk-container');
+        const generateSkinBtn = document.getElementById('generate-skin-btn');
+        const skinPromptInput = document.getElementById('skin-prompt');
+
+        let animationFrameId;
+        let player, food, score, worldSize, bots;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // --- Joystick Controls ---
+        const joystickContainer = document.getElementById('joystick-container');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+        let joystickStartX = 0;
+        let joystickStartY = 0;
+        let playerAngle = 0;
+        
+        function handleJoystickStart(e) { e.preventDefault(); joystickActive = true; const touch = e.type === 'touchstart' ? e.touches[0] : e; const rect = joystickContainer.getBoundingClientRect(); joystickStartX = rect.left + rect.width / 2; joystickStartY = rect.top + rect.height / 2; }
+        function handleJoystickMove(e) { if (!joystickActive) return; e.preventDefault(); const touch = e.type === 'touchmove' ? e.touches[0] : e; const deltaX = touch.clientX - joystickStartX; const deltaY = touch.clientY - joystickStartY; playerAngle = Math.atan2(deltaY, deltaX); const maxMove = joystickContainer.clientWidth / 4; const moveX = Math.cos(playerAngle) * maxMove; const moveY = Math.sin(playerAngle) * maxMove; joystickKnob.style.transform = `translate(${moveX}px, ${moveY}px)`;}
+        function handleJoystickEnd(e) { if (!joystickActive) return; e.preventDefault(); joystickActive = false; joystickKnob.style.transform = `translate(0px, 0px)`; }
+        joystickContainer.addEventListener('mousedown', handleJoystickStart);
+        document.addEventListener('mousemove', handleJoystickMove);
+        document.addEventListener('mouseup', handleJoystickEnd);
+        joystickContainer.addEventListener('touchstart', handleJoystickStart);
+        document.addEventListener('touchmove', handleJoystickMove);
+        document.addEventListener('touchend', handleJoystickEnd);
+
+        // --- Game Objects ---
+        class Snake {
+            constructor(x, y, radius, headColor, bodyColor, isPlayer = false) {
+                this.x = x; this.y = y; this.radius = radius;
+                this.headColor = headColor || 'hsl(200, 100%, 50%)';
+                this.bodyColor = bodyColor || 'rgba(0, 255, 100, opacity)';
+                this.isPlayer = isPlayer;
+                this.speed = isPlayer ? 3 : 2;
+                this.body = [];
+                 for(let i = 0; i < 5; i++) { this.body.push({x: this.x, y: this.y}); }
+                this.maxLength = 5;
+                this.angle = Math.random() * Math.PI * 2;
+                this.target = null;
+                this.turnSpeed = Math.PI / 60;
+            }
+
+            draw() {
+                for(let i = this.body.length - 1; i > 0; i--) {
+                     ctx.beginPath();
+                     const scale = 1 - (i / this.body.length) * 0.5;
+                     ctx.arc(this.body[i].x, this.body[i].y, this.radius * scale, 0, Math.PI * 2);
+                     const opacity = 1 - i / this.body.length;
+                     ctx.fillStyle = this.isPlayer ? this.bodyColor.replace('opacity', opacity) : this.headColor;
+                     ctx.fill();
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.headColor;
+                ctx.fill();
+            }
+
+            update() {
+                if(this.isPlayer) { if (joystickActive) this.angle = playerAngle; } 
+                else {
+                    this.findClosestFood();
+                    if (this.target) { const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x); let deltaAngle = targetAngle - this.angle; while(deltaAngle > Math.PI) deltaAngle -= Math.PI * 2; while(deltaAngle < -Math.PI) deltaAngle += Math.PI * 2; this.angle += Math.sign(deltaAngle) * Math.min(Math.abs(deltaAngle), this.turnSpeed); } 
+                    else { this.angle += (Math.random() - 0.5) * 0.1; }
+                }
+                this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
+                this.x = Math.max(this.radius, Math.min(worldSize.width - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(worldSize.height - this.radius, this.y));
+                this.body.unshift({x: this.x, y: this.y});
+                if (this.body.length > this.maxLength) { this.body.pop(); }
+                if(this.isPlayer) { for (let i = 10; i < this.body.length; i++) { const dist = Math.hypot(this.x - this.body[i].x, this.y - this.body[i].y); if (dist < this.radius) { gameOver(); return; } } }
+            }
+
+            findClosestFood() { let closestDist = 400; let closestFood = null; food.forEach(f => { const dist = Math.hypot(this.x - f.x, this.y - f.y); if (dist < closestDist) { closestDist = dist; closestFood = f; } }); this.target = closestFood; }
+            grow() { this.maxLength += 3; }
+            die() { const numPellets = Math.floor(this.maxLength / 2); for(let i = 0; i < numPellets; i++) { const segmentIndex = Math.floor(i * (this.body.length / numPellets)); const segment = this.body[segmentIndex]; if(segment) { const radius = 7; const pelletColor = this.headColor; food.push(new Food(segment.x + (Math.random()-0.5)*10, segment.y+ (Math.random()-0.5)*10, radius, pelletColor)); } } }
+            setSkin(headColor, bodyColor) { this.headColor = headColor; this.bodyColor = bodyColor; }
+        }
+
+        class Food {
+             constructor(x, y, radius, color) { this.x = x; this.y = y; this.radius = radius; this.color = color; }
+             draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.fill(); }
+        }
+
+        function init() {
+            worldSize = { width: 2000, height: 2000 };
+            const head = player ? player.headColor : 'hsl(200, 100%, 50%)';
+            const body = player ? player.bodyColor : 'rgba(0, 255, 100, opacity)';
+            player = new Snake(worldSize.width / 2, worldSize.height / 2, 15, head, body, true);
+            
+            food = []; for (let i = 0; i < 200; i++) { spawnFood(); }
+            bots = []; for (let i = 0; i < 20; i++) { spawnBot(); }
+
+            score = 0; scoreEl.textContent = 'Score: 0';
+            gameOverModal.style.display = 'none';
+        }
+        
+        function spawnFood() { const radius = 7; const x = Math.random() * (worldSize.width - radius * 2) + radius; const y = Math.random() * (worldSize.height - radius * 2) + radius; const color = `hsl(${Math.random() * 360}, 100%, 50%)`; food.push(new Food(x, y, radius, color)); }
+        function spawnBot() { const radius = 15; const x = Math.random() * (worldSize.width - radius * 2) + radius; const y = Math.random() * (worldSize.height - radius * 2) + radius; const color = `hsl(${Math.random() * 360}, 80%, 60%)`; bots.push(new Snake(x, y, radius, color, null, false)); }
+        
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+            
+            food.forEach((f, index) => { f.draw(); const dist = Math.hypot(player.x - f.x, player.y - f.y); if (dist - f.radius - player.radius < 1) { food.splice(index, 1); spawnFood(); player.grow(); score++; scoreEl.textContent = `Score: ${score}`; } });
+            
+            bots.forEach((bot, botIndex) => {
+                bot.update(); bot.draw();
+                food.forEach((f, foodIndex) => { const dist = Math.hypot(bot.x - f.x, bot.y - f.y); if (dist - f.radius - bot.radius < 1) { food.splice(foodIndex, 1); spawnFood(); bot.grow(); } });
+                for(let i = 0; i < bot.body.length; i++) { const dist = Math.hypot(player.x - bot.body[i].x, player.y - bot.body[i].y); if (dist < player.radius) { gameOver(); return; } }
+                for(let i = 0; i < player.body.length; i++) { const dist = Math.hypot(bot.x - player.body[i].x, bot.y - player.body[i].y); if (dist < bot.radius) { bot.die(); bots.splice(botIndex, 1); spawnBot(); return; } }
+                bots.forEach((otherBot, otherBotIndex) => { if (bot === otherBot) return; for (let i = 0; i < otherBot.body.length; i++) { const dist = Math.hypot(bot.x - otherBot.body[i].x, bot.y - otherBot.body[i].y); if (dist < bot.radius) { bot.die(); bots.splice(botIndex, 1); spawnBot(); return; } } });
+            });
+            player.update(); player.draw();
+            ctx.restore();
+        }
+
+        function gameOver() { cancelAnimationFrame(animationFrameId); player.die(); finalScoreText.innerText = `Your score: ${score}`; pepTalkBtn.disabled = false; pepTalkContainer.textContent = 'Click below for a pep talk!'; gameOverModal.style.display = 'flex'; }
+        
+        restartBtn.addEventListener('click', () => { init(); animate(); });
+        
+        // --- Gemini API Integration ---
+        async function callGeminiForPepTalk() {
+            pepTalkBtn.disabled = true;
+            pepTalkContainer.textContent = 'Thinking of something witty...';
+            
+            const prompt = `You are a funny and slightly sarcastic sports commentator. A player just finished a game of Slither with a score of ${score}. Give them a short, witty pep talk or a funny roast (2-3 sentences max).`;
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    pepTalkContainer.textContent = result.candidates[0].content.parts[0].text;
+                } else {
+                    pepTalkContainer.textContent = 'The AI is speechless. That must have been some game.';
+                }
+            } catch (error) {
+                console.error("Gemini API error:", error);
+                pepTalkContainer.textContent = "Couldn't reach the commentator. They're probably on a coffee break.";
+            }
+        }
+
+        async function callGeminiForSkin() {
+            const userPrompt = skinPromptInput.value;
+            if (!userPrompt) return;
+            
+            generateSkinBtn.disabled = true;
+            generateSkinBtn.textContent = 'Generating...';
+            
+            const prompt = `Based on the following description, generate a color scheme for a snake in a game. Description: "${userPrompt}". Provide a primary head color as a HSL string (e.g., 'hsl(200, 100%, 50%)') and a body trail color as an RGBA string with a placeholder for opacity (e.g., 'rgba(0, 255, 100, opacity)'). Only return the JSON object.`;
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = {
+              contents: chatHistory,
+              generationConfig: {
+                  responseMimeType: "application/json",
+                  responseSchema: {
+                      type: "OBJECT",
+                      properties: {
+                          "headColor": { "type": "STRING" },
+                          "bodyColor": { "type": "STRING" }
+                      },
+                  }
+              }
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    const json = JSON.parse(result.candidates[0].content.parts[0].text);
+                    player.setSkin(json.headColor, json.bodyColor);
+                } else {
+                    console.error("Invalid response from Gemini for skin generation.");
+                }
+            } catch(error) {
+                console.error("Gemini API skin generation error:", error);
+            } finally {
+                generateSkinBtn.disabled = false;
+                generateSkinBtn.textContent = '✨ Generate Skin';
+            }
+        }
+
+        pepTalkBtn.addEventListener('click', callGeminiForPepTalk);
+        generateSkinBtn.addEventListener('click', callGeminiForSkin);
+
+        init();
+        animate();
+    });
+    </script>
+</body>
+</html>
