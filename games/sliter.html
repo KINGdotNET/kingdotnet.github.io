@@ -7,7 +7,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>KING.NET Sliter Game with Gemini AI</title>
+    <title>KING.NET Slither Game with Gemini AI</title>
     <link rel="icon" type="image/x-icon" href="https://king.net/games/images/favicon-kingnet.ico">
     <style>
         body {
@@ -41,6 +41,7 @@
             background: rgba(0,0,0,0.3);
             padding: 10px;
             border-radius: 10px;
+            z-index: 10; /* Ensure UI is above canvas */
         }
 
         #score {
@@ -59,6 +60,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            z-index: 10; /* Ensure UI is above canvas */
         }
         
         #skin-prompt {
@@ -96,6 +98,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            z-index: 10; /* Ensure UI is above canvas */
         }
 
         #joystick-knob {
@@ -169,6 +172,19 @@
             cursor: pointer;
             margin-top: 20px;
         }
+
+        /* Power-up specific styling for visual feedback */
+        .power-up-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 1.2em;
+            color: yellow;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -185,6 +201,10 @@
 
         <div id="joystick-container">
             <div id="joystick-knob"></div>
+        </div>
+
+        <div id="powerUpIndicator" class="power-up-indicator" style="display:none;">
+            Power Up Active!
         </div>
     </div>
     
@@ -215,13 +235,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToKingNetBtn = document.getElementById('backToKingNetBtn');
     const generateSkinBtn = document.getElementById('generate-skin-btn');
     const skinPromptInput = document.getElementById('skin-prompt');
+    const powerUpIndicator = document.getElementById('powerUpIndicator'); // New element for power-up indicator
 
     const twitterShareBtn = document.getElementById('twitterShareBtn');
     const facebookShareBtn = document.getElementById('facebookShareBtn');
     const instagramShareBtn = document.getElementById('instagramShareBtn');
 
     let animationFrameId = null; // Initialize to null
-    let player, food, score, worldSize, bots;
+    let player, food, score, worldSize, bots, powerUps; // 'powerUps' array added
+
+    // Player Power-up states
+    let playerSpeedMultiplier = 1;
+    let playerGlow = false;
+    let playerThrobbing = false;
+    let playerRadiusMultiplier = 1;
 
     function resizeCanvas() {
         canvas.width = window.innerWidth;
@@ -255,33 +282,55 @@ document.addEventListener('DOMContentLoaded', () => {
             this.headColor = headColor || 'hsl(200, 100%, 50%)';
             this.bodyColor = bodyColor || 'rgba(0, 255, 100, opacity)';
             this.isPlayer = isPlayer;
-            this.speed = isPlayer ? 3 : 2;
+            this.baseSpeed = isPlayer ? 3 : 2; // Store base speed
+            this.speed = this.baseSpeed; // Current speed
             this.body = [];
             for(let i = 0; i < 10; i++) { this.body.push({x: this.x, y: this.y}); }
             this.maxLength = 10;
             this.angle = Math.random() * Math.PI * 2;
             this.target = null;
             this.turnSpeed = Math.PI / 60;
+            this.powerUpTimeout = null; // To store timeout ID for power-ups
         }
 
         draw() {
+            let currentRadius = this.radius * playerRadiusMultiplier; // Apply radius multiplier
+
+            if (this.isPlayer && playerThrobbing) {
+                currentRadius *= (1 + Math.sin(performance.now() * 0.01) * 0.1); // Throbbing effect
+            }
+
             for(let i = this.body.length - 1; i > 0; i--) {
                 ctx.beginPath();
                 const scale = 1 - (i / this.body.length) * 0.5;
-                ctx.arc(this.body[i].x, this.body[i].y, this.radius * scale, 0, Math.PI * 2);
+                ctx.arc(this.body[i].x, this.body[i].y, currentRadius * scale, 0, Math.PI * 2);
                 const opacity = 1 - i / this.body.length;
                 ctx.fillStyle = this.isPlayer ? this.bodyColor.replace('opacity', opacity) : this.headColor;
                 ctx.fill();
             }
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
             ctx.fillStyle = this.headColor;
             ctx.fill();
+
+            // Draw glowing effect for player
+            if (this.isPlayer && playerGlow) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.headColor; // Glow with head color
+                ctx.fillStyle = this.headColor;
+                ctx.fill();
+                ctx.restore();
+            }
         }
 
         update() {
-            if(this.isPlayer) { if (joystickActive) this.angle = playerAngle; } 
-            else {
+            if(this.isPlayer) {
+                this.speed = this.baseSpeed * playerSpeedMultiplier; // Apply speed multiplier
+                if (joystickActive) this.angle = playerAngle;
+            } else {
                 this.findClosestFood();
                 if (this.target) { const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x); let deltaAngle = targetAngle - this.angle; while(deltaAngle > Math.PI) deltaAngle -= Math.PI * 2; while(deltaAngle < -Math.PI) deltaAngle += Math.PI * 2; this.angle += Math.sign(deltaAngle) * Math.min(Math.abs(deltaAngle), this.turnSpeed); } 
                 else { this.angle += (Math.random() - 0.5) * 0.1; }
@@ -293,7 +342,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.body.length > this.maxLength) { this.body.pop(); }
         }
 
-        findClosestFood() { let closestDist = 400; let closestFood = null; food.forEach(f => { const dist = Math.hypot(this.x - f.x, this.y - f.y); if (dist < closestDist) { closestDist = dist; closestFood = f; } }); this.target = closestFood; }
+        findClosestFood() { 
+            let closestDist = 400; 
+            let closestItem = null; // Can be food or power-up
+
+            food.forEach(f => { 
+                const dist = Math.hypot(this.x - f.x, this.y - f.y); 
+                if (dist < closestDist) { closestDist = dist; closestItem = f; } 
+            }); 
+            
+            // Also consider power-ups when bots search for targets
+            powerUps.forEach(p => {
+                const dist = Math.hypot(this.x - p.x, this.y - p.y);
+                if (dist < closestDist) { closestDist = dist; closestItem = p; }
+            });
+
+            this.target = closestItem; 
+        }
         grow() { this.maxLength += 3; }
         die() { const numPellets = Math.floor(this.maxLength / 2); for(let i = 0; i < numPellets; i++) { const segmentIndex = Math.floor(i * (this.body.length / numPellets)); const segment = this.body[segmentIndex]; if(segment) { const radius = 7; const pelletColor = this.headColor; food.push(new Food(segment.x + (Math.random()-0.5)*10, segment.y+ (Math.random()-0.5)*10, radius, pelletColor)); } } }
         setSkin(headColor, bodyColor) { this.headColor = headColor; this.bodyColor = bodyColor; }
@@ -304,6 +369,46 @@ document.addEventListener('DOMContentLoaded', () => {
         draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.fill(); }
     }
 
+    // New PowerUp class
+    class PowerUp {
+        constructor(x, y, type) {
+            this.x = x;
+            this.y = y;
+            this.radius = 12; // Power-up radius
+            this.type = type; // 'speed', 'glow', 'throb', 'wider'
+            this.color = this.getColorForType(type);
+            this.effectDuration = 10000; // 10 seconds for power-up effect
+        }
+
+        getColorForType(type) {
+            switch(type) {
+                case 'speed': return 'gold';
+                case 'glow': return 'cyan';
+                case 'throb': return 'magenta';
+                case 'wider': return 'lime';
+                default: return 'white';
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Add a small icon or text for clarity (optional, for debugging)
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'black';
+            ctx.fillText(this.type[0].toUpperCase(), this.x, this.y);
+        }
+    }
+
+
     function init() {
         worldSize = { width: 2000, height: 2000 };
         const head = player ? player.headColor : 'hsl(200, 100%, 50%)';
@@ -311,11 +416,20 @@ document.addEventListener('DOMContentLoaded', () => {
         player = new Snake(worldSize.width / 2, worldSize.height / 2, 15, head, body, true);
         
         food = []; for (let i = 0; i < 200; i++) { spawnFood(); }
+        powerUps = []; // Initialize power-ups array
+        for (let i = 0; i < 5; i++) { spawnPowerUp(); } // Spawn some initial power-ups
         bots = []; for (let i = 0; i < 20; i++) { spawnBot(); }
 
         score = 0; scoreEl.textContent = 'Score: 0';
         gameOverModal.style.display = 'none';
         
+        // Reset power-up states
+        playerSpeedMultiplier = 1;
+        playerGlow = false;
+        playerThrobbing = false;
+        playerRadiusMultiplier = 1;
+        powerUpIndicator.style.display = 'none'; // Hide indicator
+
         if (animationFrameId === null) {
             animationFrameId = requestAnimationFrame(animate);
         }
@@ -324,13 +438,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function spawnFood() { const radius = 7; const x = Math.random() * (worldSize.width - radius * 2) + radius; const y = Math.random() * (worldSize.height - radius * 2) + radius; const color = `hsl(${Math.random() * 360}, 100%, 50%)`; food.push(new Food(x, y, radius, color)); }
     function spawnBot() { const radius = 15; const x = Math.random() * (worldSize.width - radius * 2) + radius; const y = Math.random() * (worldSize.height - radius * 2) + radius; const color = `hsl(${Math.random() * 360}, 80%, 60%)`; bots.push(new Snake(x, y, radius, color, null, false)); }
 
+    // New function to spawn power-ups
+    function spawnPowerUp() {
+        const types = ['speed', 'glow', 'throb', 'wider'];
+        const randomType = types[Math.floor(Math.random() * types.length)];
+        const radius = 12; // Power-up radius
+        const x = Math.random() * (worldSize.width - radius * 2) + radius;
+        const y = Math.random() * (worldSize.height - radius * 2) + radius;
+        powerUps.push(new PowerUp(x, y, randomType));
+    }
+
+
     function checkCollisions() {
         // Player vs Bot collisions
         for (let i = bots.length - 1; i >= 0; i--) {
             const bot = bots[i];
             // Head-on collision
             const headDist = Math.hypot(player.x - bot.x, player.y - bot.y);
-            if (headDist < player.radius + bot.radius) {
+            if (headDist < (player.radius * playerRadiusMultiplier) + bot.radius) { // Use playerRadiusMultiplier for player collision
                 if (player.maxLength >= bot.maxLength) {
                     bot.die(); bots.splice(i, 1); spawnBot();
                 } else {
@@ -367,11 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function checkFoodConsumption() {
+    // Combined function for food and power-up consumption
+    function checkFoodAndPowerUpConsumption() {
+        // Check food consumption
         for (let i = food.length - 1; i >= 0; i--) {
             const f = food[i];
             const pDist = Math.hypot(player.x - f.x, player.y - f.y); 
-            if (pDist - f.radius - player.radius < 1) { 
+            if (pDist - f.radius - (player.radius * playerRadiusMultiplier) < 1) { // Use playerRadiusMultiplier for collision
                 food.splice(i, 1); spawnFood(); player.grow(); score++; 
                 scoreEl.textContent = `Score: ${score}`; 
                 continue;
@@ -385,6 +512,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
+
+        // Check power-up consumption
+        for (let i = powerUps.length - 1; i >= 0; i--) {
+            const p = powerUps[i];
+            const dist = Math.hypot(player.x - p.x, player.y - p.y);
+            if (dist - p.radius - (player.radius * playerRadiusMultiplier) < 1) { // Use playerRadiusMultiplier for collision
+                applyPowerUp(p.type);
+                powerUps.splice(i, 1); // Remove consumed power-up
+                spawnPowerUp(); // Spawn a new one to replace it
+            }
+        }
+    }
+
+    // New function to apply power-up effects
+    function applyPowerUp(type) {
+        powerUpIndicator.textContent = `Power Up: ${type.toUpperCase()}!`;
+        powerUpIndicator.style.display = 'block';
+
+        // Reset all power-up related states first in case one is already active
+        playerSpeedMultiplier = 1;
+        playerGlow = false;
+        playerThrobbing = false;
+        playerRadiusMultiplier = 1;
+
+        switch(type) {
+            case 'speed':
+                playerSpeedMultiplier = 1.5; // 50% faster
+                break;
+            case 'glow':
+                playerGlow = true;
+                break;
+            case 'throb':
+                playerThrobbing = true;
+                break;
+            case 'wider':
+                playerRadiusMultiplier = 1.5; // 50% wider
+                break;
+        }
+
+        // Clear any existing timeout to prevent overlapping effects
+        clearTimeout(player.powerUpTimeout); 
+        player.powerUpTimeout = setTimeout(() => {
+            // Revert effects after duration
+            playerSpeedMultiplier = 1;
+            playerGlow = false;
+            playerThrobbing = false;
+            playerRadiusMultiplier = 1;
+            powerUpIndicator.style.display = 'none';
+            console.log("Power-up ended.");
+        }, 10000); // 10 seconds duration
+        console.log(`Power-up activated: ${type}`);
     }
 
     function checkHeadToBodyCollision(headSnake, bodySnake) {
@@ -411,11 +589,12 @@ document.addEventListener('DOMContentLoaded', () => {
         bots.forEach(bot => bot.update());
         checkCollisions();
         if (animationFrameId === null) return; // Stop animation if game over
-        checkFoodConsumption();
+        checkFoodAndPowerUpConsumption(); // Updated to check both food and power-ups
         
         ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save(); ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
         food.forEach(f => f.draw());
+        powerUps.forEach(p => p.draw()); // Draw power-ups
         bots.forEach(bot => bot.draw());
         player.draw();
         ctx.restore();
@@ -431,6 +610,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Capture screenshot and enable social sharing
         captureScreenshotForShare();
+
+        // Ensure power-up effects are cleared on game over
+        clearTimeout(player.powerUpTimeout);
+        playerSpeedMultiplier = 1;
+        playerGlow = false;
+        playerThrobbing = false;
+        playerRadiusMultiplier = 1;
+        powerUpIndicator.style.display = 'none';
     }
     
     restartBtn.addEventListener('click', () => { 
@@ -447,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function captureScreenshotForShare() {
         // Temporarily hide UI elements to capture a clean screenshot
-        const uiElements = document.querySelectorAll('.ui-panel, #skin-customizer, #joystick-container');
+        const uiElements = document.querySelectorAll('.ui-panel, #skin-customizer, #joystick-container, #powerUpIndicator'); // Added powerUpIndicator
         uiElements.forEach(el => el.style.visibility = 'hidden');
 
         // Draw the game scene again to ensure it's up-to-date for the screenshot
@@ -456,6 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.save();
         ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
         food.forEach(f => f.draw());
+        powerUps.forEach(p => p.draw()); // Draw power-ups for screenshot
         bots.forEach(bot => bot.draw());
         player.draw();
         ctx.restore();
@@ -472,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     twitterShareBtn.addEventListener('click', () => {
-        const text = encodeURIComponent(`I scored ${score} in KING.NET - Sliter Game! Can you beat my score? #SlitherGame #HTML5Game`);
+        const text = encodeURIComponent(`I scored ${score} in KING.NET - Slither Game! Can you beat my score? #SlitherGame #HTML5Game`);
         const url = encodeURIComponent(window.location.href);
         const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
         
@@ -486,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     facebookShareBtn.addEventListener('click', () => {
-        const quote = encodeURIComponent(`I scored ${score} in KING.NET - Sliter Game!`);
+        const quote = encodeURIComponent(`I scored ${score} in KING.NET - Slither Game!`);
         const href = encodeURIComponent(window.location.href);
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?quote=${quote}&href=${href}`;
         window.open(facebookUrl, '_blank');
@@ -509,41 +697,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Gemini API Integration (Placeholder - you'll need to fill this in) ---
-    async function callGeminiForPepTalk() {
-        // This function was originally in your code but omitted for brevity.
-        // You'll need to add your actual Gemini API call logic here.
-        console.log("Gemini Pep Talk functionality is a placeholder. Implement your API call here.");
-        // Example:
-        // pepTalkContainer.textContent = "Great effort! Keep practicing and you'll master the game!";
-    }
-
+    // --- Gemini API Integration (Simulated for Skin Generation) ---
     async function callGeminiForSkin() {
-        // This function was originally in your code but omitted for brevity.
-        // You'll need to add your actual Gemini API call logic here to generate skin colors.
-        console.log("Gemini Skin Generation functionality is a placeholder. Implement your API call here.");
-        // Example:
-        // const prompt = skinPromptInput.value;
-        // if (prompt) {
-        //     generateSkinBtn.disabled = true;
-        //     skinPromptInput.disabled = true;
-        //     skinPromptInput.placeholder = "Generating...";
-        //     try {
-        //         // Simulate API call
-        //         await new Promise(resolve => setTimeout(resolve, 2000));
-        //         const newHeadColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        //         const newBodyColor = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, opacity)`;
-        //         player.setSkin(newHeadColor, newBodyColor);
-        //         skinPromptInput.value = '';
-        //         skinPromptInput.placeholder = "Describe a snake skin...";
-        //     } catch (error) {
-        //         console.error("Error generating skin:", error);
-        //         skinPromptInput.placeholder = "Error generating. Try again.";
-        //     } finally {
-        //         generateSkinBtn.disabled = false;
-        //         skinPromptInput.disabled = false;
-        //     }
-        // }
+        const prompt = skinPromptInput.value.toLowerCase();
+        if (!prompt) {
+            alert("Please enter a description for the snake skin.");
+            return;
+        }
+
+        generateSkinBtn.disabled = true;
+        skinPromptInput.disabled = true;
+        skinPromptInput.placeholder = "Generating skin...";
+
+        try {
+            // Simulate an API call delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            let newHeadColor = 'white';
+            let newBodyColor = 'rgba(100, 100, 100, opacity)'; // Default grey
+
+            // Basic logic to generate colors based on prompt keywords
+            if (prompt.includes('red')) {
+                newHeadColor = 'red';
+                newBodyColor = 'rgba(255, 100, 100, opacity)';
+            } else if (prompt.includes('blue')) {
+                newHeadColor = 'blue';
+                newBodyColor = 'rgba(100, 100, 255, opacity)';
+            } else if (prompt.includes('green')) {
+                newHeadColor = 'lime';
+                newBodyColor = 'rgba(0, 255, 0, opacity)';
+            } else if (prompt.includes('yellow')) {
+                newHeadColor = 'yellow';
+                newBodyColor = 'rgba(255, 255, 0, opacity)';
+            } else if (prompt.includes('purple')) {
+                newHeadColor = 'purple';
+                newBodyColor = 'rgba(128, 0, 128, opacity)';
+            } else if (prompt.includes('black')) {
+                newHeadColor = 'black';
+                newBodyColor = 'rgba(50, 50, 50, opacity)';
+            } else if (prompt.includes('rainbow')) {
+                const hue = Math.random() * 360;
+                newHeadColor = `hsl(${hue}, 100%, 50%)`;
+                newBodyColor = `hsla(${hue + 60}, 100%, 70%, opacity)`;
+            } else if (prompt.includes('metallic')) {
+                newHeadColor = 'silver';
+                newBodyColor = 'rgba(192, 192, 192, opacity)';
+            } else if (prompt.includes('gold')) {
+                newHeadColor = 'gold';
+                newBodyColor = 'rgba(255, 215, 0, opacity)';
+            }
+            else {
+                // If no specific keyword, generate a random color
+                const hue = Math.random() * 360;
+                newHeadColor = `hsl(${hue}, 100%, 50%)`;
+                newBodyColor = `hsla(${hue}, 70%, 50%, opacity)`;
+            }
+            
+            player.setSkin(newHeadColor, newBodyColor);
+            skinPromptInput.value = '';
+            skinPromptInput.placeholder = "Describe a snake skin...";
+            alert("Skin generated! Check your snake.");
+
+        } catch (error) {
+            console.error("Error generating skin:", error);
+            skinPromptInput.placeholder = "Error generating. Try again.";
+            alert("Failed to generate skin. See console for details.");
+        } finally {
+            generateSkinBtn.disabled = false;
+            skinPromptInput.disabled = false;
+        }
     }
 
     // Event listener for generating skin
