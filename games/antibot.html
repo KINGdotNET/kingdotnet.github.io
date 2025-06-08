@@ -8,7 +8,9 @@
     <style>
         /* Import Google Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        @import url('https://fonts.com/css2?family=Inter:wght@400;700&display=swap');
+        /* Note: 'https://fonts.com/css2?family=Inter:wght@400;700&display=swap' was corrected to use fonts.googleapis.com */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
 
         /* Body and Game Container Styling */
         body {
@@ -234,7 +236,7 @@
         }
         .modal-button.blue {
             background: linear-gradient(145deg, #0097e6, #00a8ff);
-            box-shadow: 0 4px 10px rgba(0, 150, 255, 0.3);
+            box-shadow: 0 44px 10px rgba(0, 150, 255, 0.3);
         }
 
         /* Close Button Styling */
@@ -320,6 +322,8 @@
     </style>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 </head>
 <body>
     <div id="gameContainer">
@@ -342,6 +346,8 @@
         <button id="action-button">
             <span class="icon">🔥</span> <!-- Fire icon or similar -->
         </button>
+
+        <!-- Joystick elements removed from HTML as per user request -->
 
         <div id="activeEnhancementDisplay" class="active-enhancement-display">
             Active: <span id="activeEnhancementType">None</span> (<span id="activeEnhancementTime">0s</span>)
@@ -402,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI elements
     const startModal = document.getElementById('startModal');
     const gameOverModal = document.getElementById('gameOverModal');
-    const messageModal = document.getElementById('messageModal'); // New message modal
+    const messageModal = document.getElementById('messageModal');
     const messageModalTitle = document.getElementById('messageModalTitle');
     const messageModalText = document.getElementById('messageModalText');
     const messageModalOkBtn = document.getElementById('messageModalOkBtn');
@@ -416,12 +422,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const hpBarEl = document.getElementById('hp-bar');
     const xpBarEl = document.getElementById('xp-bar');
     const scrapInfoEl = document.getElementById('scrap-info');
+
     const finalScoreText = document.getElementById('finalScoreText');
 
     const actionButton = document.getElementById('action-button');
 
     const miniMapCanvas = document.getElementById('miniMapCanvas');
     const miniMapCtx = miniMapCanvas.getContext('2d');
+
+    const statsPanel = document.getElementById('stats-panel');
+    const miniMapContainer = document.getElementById('miniMapContainer');
+
 
     const activeEnhancementDisplay = document.getElementById('activeEnhancementDisplay');
     const activeEnhancementTypeEl = document.getElementById('activeEnhancementType');
@@ -434,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let animationFrameId = null;
     let gameState = 'start'; // 'start', 'playing', 'game_over'
-    let player, enemies, projectiles, pickups;
+    let player, enemies, projectiles, pickups, allies; // Added allies array
     let worldSize = { width: 3000, height: 3000 };
     let camera = { x: 0, y: 0 };
     let score = 0;
@@ -475,6 +486,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let explosions = [];
     let enemySpawnIntervalId;
 
+    // Tone.js audio setup
+    const playerMissileSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.2 }
+    }).toDestination();
+
+    const enemyMissileSynth = new Tone.Synth({
+        oscillator: { type: "square" },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.01, release: 0.1 }
+    }).toDestination();
+
+    const explosionNoise = new Tone.NoiseSynth({
+        noise: { type: "white" },
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.3 }
+    }).toDestination();
+
+    // Ensure audio context is resumed on first user interaction
+    let audioContextResumed = false;
+    function resumeAudioContext() {
+        if (!audioContextResumed) {
+            Tone.start();
+            audioContextResumed = true;
+            console.log("AudioContext resumed.");
+        }
+    }
+    // Listen for any click to resume audio context
+    document.addEventListener('click', resumeAudioContext, { once: true });
+    document.addEventListener('keydown', resumeAudioContext, { once: true });
+
 
     // --- Game Setup ---
     function resizeCanvas() {
@@ -498,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initGame() {
         resizeCanvas();
-        // Set mini-map canvas dimensions
         miniMapCanvas.width = 170;
         miniMapCanvas.height = 170;
 
@@ -507,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enemies = [];
         projectiles = [];
         pickups = [];
+        allies = []; // Initialize allies array
         explosions = [];
         score = 0;
         playerXP = 0;
@@ -518,14 +558,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSpeedMultiplier = 1;
         currentShieldMultiplier = 1;
         currentDamageMultiplier = 1;
-        playerBurstFire = { active: false, count: 1, delay: 0, spreadAngle: 0 }; // Reset burst fire state
+        playerBurstFire = { active: false, count: 1, delay: 0, spreadAngle: 0 };
         activeEnhancementDisplay.style.display = 'none';
 
-        // Ensure mini-map is visible (already handled by CSS, but good to be explicit for re-init)
+        // Ensure UI elements are visible on game start/restart
+        statsPanel.style.display = 'flex';
         miniMapContainer.style.display = 'block';
-        // Ensure stats panel is visible (already handled by CSS, but good to be explicit for re-init)
-        document.getElementById('stats-panel').style.display = 'flex';
-
 
         // Spawn initial entities: a mix of resources and random power-ups
         for (let i = 0; i < 25; i++) {
@@ -536,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Start continuous enemy spawning
         if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
-        enemySpawnIntervalId = setInterval(spawnEnemy, 1000); // Increased frequency for testing
+        enemySpawnIntervalId = setInterval(spawnEnemy, 1000); // Spawn an enemy every 1 second
 
         updateUI();
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -753,12 +791,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const totalMissiles = playerBurstFire.count;
                     const sprayDelay = playerBurstFire.delay;
-                    const spread = playerBurstFire.spreadAngle; // Using spreadAngle for fanning out
+                    const spread = playerBurstFire.spreadAngle;
 
                     this.burstIntervalId = setInterval(() => {
                         if (this.burstShotCount < totalMissiles) {
                             let missileAngle = playerAngle;
-                            if (totalMissiles > 1 && spread > 0) { // Apply spread only if firing more than one and spread is defined
+                            if (totalMissiles > 1 && spread > 0) {
                                 const offset = (this.burstShotCount - (totalMissiles - 1) / 2) * (spread / (totalMissiles - 1));
                                 missileAngle = playerAngle + offset;
                             }
@@ -766,6 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const bulletX = this.x + Math.cos(missileAngle) * (this.radius + playerProjectileRadius);
                             const bulletY = this.y + Math.sin(missileAngle) * (this.radius + playerProjectileRadius);
                             projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', missileAngle, playerProjectileSpeed, this.damage, 'player'));
+                            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n");
                             this.burstShotCount++;
                         } else {
                             clearInterval(this.burstIntervalId);
@@ -777,6 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
                     const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
                     projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
+                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n");
                 }
                 this.lastShotTime = currentTime;
             }
@@ -791,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.health = 30 + (playerLevel * 10);
             this.damage = 5 + (playerLevel * 2);
             this.target = player;
-            this.fireRate = 500; // Adjusted for more frequent firing
+            this.fireRate = 500;
             this.lastShotTime = 0;
             this.xpValue = 20 + (playerLevel * 5);
             this.scrapValue = 5 + (playerLevel * 1);
@@ -808,8 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.x = Math.max(0, Math.min(worldSize.width, this.x));
             this.y = Math.max(0, Math.min(worldSize.height, this.y));
 
-            // Enemy fires if within range and cooldown is ready
-            if (this.distanceTo(player) < 400 && performance.now() - this.lastShotTime > this.fireRate) { // Increased firing range
+            if (this.distanceTo(player) < 400 && performance.now() - this.lastShotTime > this.fireRate) {
                 this.attack();
                 this.lastShotTime = performance.now();
             }
@@ -817,8 +856,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         attack() {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
-            // Pass the enemy instance as originator to avoid self-damage from friendly fire logic
-            projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this)); // Increased projectile radius
+            projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this));
+            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n");
         }
 
         takeDamage(damage) {
@@ -865,14 +904,82 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // New Ally Class
+    class Ally extends Entity {
+        constructor(x, y, radius, color, lifespan) {
+            super(x, y, radius, color);
+            this.speed = playerBaseSpeed * 0.8; // Allies move slightly slower than player
+            this.damage = playerBaseDamage * 0.5; // Allies deal half player damage
+            this.fireRate = 700; // Allies fire every 0.7 seconds
+            this.lastShotTime = 0;
+            this.lifespan = lifespan; // In milliseconds
+            this.spawnTime = performance.now();
+        }
+
+        update() {
+            // Find the nearest enemy
+            let nearestEnemy = null;
+            let minDist = Infinity;
+            for (const enemy of enemies) {
+                const dist = this.distanceTo(enemy);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestEnemy = enemy;
+                }
+            }
+
+            if (nearestEnemy) {
+                // Move towards the nearest enemy
+                const angleToTarget = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+                this.x += Math.cos(angleToTarget) * this.speed;
+                this.y += Math.sin(angleToTarget) * this.speed;
+
+                // Attack enemy if in range and cooldown is ready
+                if (minDist < 300 && performance.now() - this.lastShotTime > this.fireRate) {
+                    this.attack(nearestEnemy);
+                    this.lastShotTime = performance.now();
+                }
+            } else {
+                // If no enemies, perhaps follow player or patrol
+                const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angleToPlayer) * this.speed * 0.5; // Follow player slowly
+                this.y += Math.sin(angleToPlayer) * this.speed * 0.5;
+            }
+        }
+
+        attack(targetEnemy) {
+            const angle = Math.atan2(targetEnemy.y - this.y, targetEnemy.x - this.x);
+            // Allied projectiles are green and hurt enemies (friendly fire to enemies)
+            projectiles.push(new Projectile(this.x, this.y, 6, 'lightgreen', angle, 9, this.damage, 'ally', this));
+            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C5", "16n"); // A slightly higher pitch for allies
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x - camera.x, this.y - camera.y);
+            // Draw a small triangle or simple ship shape for allies
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius);
+            ctx.lineTo(-this.radius * 0.8, this.radius * 0.8);
+            ctx.lineTo(this.radius * 0.8, this.radius * 0.8);
+            ctx.closePath();
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     class Projectile extends Entity {
-        constructor(x, y, radius, color, angle, speed, damage, owner, originator = null) { // Added originator for friendly fire
+        constructor(x, y, radius, color, angle, speed, damage, owner, originator = null) {
             super(x, y, radius, color);
             this.angle = angle;
             this.speed = speed;
             this.damage = damage;
             this.owner = owner;
-            this.originator = originator; // Reference to the entity that fired it
+            this.originator = originator;
         }
 
         update() {
@@ -886,8 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
             super(x, y, radius, 'lime');
             this.type = type;
             if (type === 'temp_boost') {
-                // Added 'missile_spray_boost'
-                const boostTypes = ['speed', 'shield', 'weapon', 'burst_fire', 'health', 'missile_spray'];
+                const boostTypes = ['speed', 'shield', 'weapon', 'burst_fire', 'health', 'missile_spray', 'allies']; // Added allies boost
                 this.boostType = boostTypes[Math.floor(Math.random() * boostTypes.length)];
                 this.color = this.getColorForBoostType(this.boostType);
                 this.radius = 15;
@@ -904,7 +1010,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'weapon': return 'orange';
                 case 'burst_fire': return 'magenta';
                 case 'health': return 'pink';
-                case 'missile_spray': return 'purple'; // New color for missile spray
+                case 'missile_spray': return 'purple';
+                case 'allies': return 'lightgreen'; // Color for allies pickup
                 default: return 'gray';
             }
         }
@@ -923,7 +1030,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'weapon': symbol = '⚔️'; break;
                     case 'burst_fire': symbol = '💥'; break;
                     case 'health': symbol = '❤️'; break;
-                    case 'missile_spray': symbol = '🌀'; break; // New symbol for missile spray
+                    case 'missile_spray': symbol = '🌀'; break;
+                    case 'allies': symbol = '🤖'; break; // Symbol for allies pickup
                 }
                 ctx.fillText(symbol, this.x - camera.x, this.y - camera.y);
             } else {
@@ -958,6 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     life: this.lifeSpan
                 });
             }
+            if (audioContextResumed) explosionNoise.triggerAttackRelease("0.5");
         }
 
         update() {
@@ -1036,6 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         player.update();
         enemies.forEach(enemy => enemy.update());
         projectiles.forEach(projectile => projectile.update());
+        allies.forEach(ally => ally.update()); // Update allies
         explosions.forEach(explosion => explosion.update());
 
 
@@ -1077,6 +1187,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Enemy Projectile vs Ally
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const proj = projectiles[i];
+            if (proj.owner === 'enemy') {
+                let hitAlly = false;
+                for (let j = allies.length - 1; j >= 0; j--) {
+                    const ally = allies[j];
+                    if (proj.checkCollision(ally)) {
+                        hitAlly = true;
+                        // Allies can be destroyed
+                        explosions.push(new Explosion(ally.x, ally.y, ally.color));
+                        allies.splice(j, 1);
+                        break;
+                    }
+                }
+                if (hitAlly) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // Ally Projectile vs Enemy
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const proj = projectiles[i];
+            if (proj.owner === 'ally') {
+                let hitEnemy = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (proj.checkCollision(enemy)) {
+                        hitEnemy = true;
+                        if (enemy.takeDamage(proj.damage)) {
+                            enemies.splice(j, 1);
+                            spawnEnemy();
+                            score += 10;
+                        }
+                        break;
+                    }
+                }
+                if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+
         // Enemy Projectile vs Enemy (Friendly Fire)
         for (let i = projectiles.length - 1; i >= 0; i--) {
             const proj = projectiles[i];
@@ -1084,8 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let hitOtherEnemy = false;
                 for (let k = enemies.length - 1; k >= 0; k--) {
                     const otherEnemy = enemies[k];
-                    // Ensure the projectile doesn't hit the enemy that fired it initially
-                    if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) { // Check against originator
+                    if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) {
                         hitOtherEnemy = true;
                         if (otherEnemy.takeDamage(proj.damage)) {
                             enemies.splice(k, 1);
@@ -1129,10 +1283,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Remove dead allies (if they have a lifespan)
+        allies = allies.filter(ally => performance.now() - ally.spawnTime < ally.lifespan);
+
         // Draw entities
         pickups.forEach(pickup => pickup.draw());
         enemies.forEach(enemy => enemy.draw());
         projectiles.forEach(projectile => projectile.draw());
+        allies.forEach(ally => ally.draw()); // Draw allies
         explosions.forEach(explosion => explosion.draw());
         player.draw();
 
@@ -1177,6 +1335,14 @@ document.addEventListener('DOMContentLoaded', () => {
             miniMapCtx.fillStyle = pickup.color;
             miniMapCtx.fill();
         });
+
+        // Draw allies on mini-map
+        allies.forEach(ally => {
+            miniMapCtx.beginPath();
+            miniMapCtx.arc(ally.x * mapScale, ally.y * mapScale, ally.radius * mapScale * 0.7, 0, Math.PI * 2);
+            miniMapCtx.fillStyle = ally.color;
+            miniMapCtx.fill();
+        });
     }
 
     // --- Message Modal Functions ---
@@ -1206,10 +1372,10 @@ document.addEventListener('DOMContentLoaded', () => {
             playerBurstFire.active = false;
             playerBurstFire.count = 1;
             playerBurstFire.delay = 0;
-            playerBurstFire.spreadAngle = 0; // Reset spread angle
+            playerBurstFire.spreadAngle = 0;
             if (player.burstIntervalId) clearInterval(player.burstIntervalId);
-            player.shieldActive = false; // Ensure shield state is reset
-            player.currentShieldHP = 0; // Ensure current shield HP is reset
+            player.shieldActive = false;
+            player.currentShieldHP = 0;
             activeEnhancement.type = null;
             activeEnhancement.endTime = 0;
             activeEnhancementDisplay.style.display = 'none';
@@ -1241,23 +1407,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBurstFire.delay = 50;
                 playerBurstFire.spreadAngle = 0; // No spread for burst fire
                 break;
-            case 'missile_spray': // New missile spray boost
+            case 'missile_spray':
                 activeEnhancement.type = boostType;
                 activeEnhancement.endTime = performance.now() + 10000;
                 playerBurstFire.active = true;
-                playerBurstFire.count = 5; // 5 missiles in the spray
-                playerBurstFire.delay = 80; // Delay between each missile in spray
-                playerBurstFire.spreadAngle = Math.PI / 4; // 45-degree spread
+                playerBurstFire.count = 5;
+                playerBurstFire.delay = 80;
+                playerBurstFire.spreadAngle = Math.PI / 4;
                 break;
             case 'health_boost':
                 player.health = Math.min(player.maxHealth, player.health + player.maxHealth * 0.5);
                 activeEnhancement.type = boostType;
                 activeEnhancement.endTime = performance.now() + 2000; // Display for 2 seconds
                 break;
+            case 'allies': // New allies boost
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 15000; // Allies last 15 seconds
+                const numAllies = Math.floor(Math.random() * 6) + 5; // 5 to 10 allies
+                for (let i = 0; i < numAllies; i++) {
+                    const spawnOffset = player.radius * 2 + Math.random() * 20;
+                    const spawnAngle = Math.random() * Math.PI * 2;
+                    const allyX = player.x + Math.cos(spawnAngle) * spawnOffset;
+                    const allyY = player.y + Math.sin(spawnAngle) * spawnOffset;
+                    allies.push(new Ally(allyX, allyY, 15, 'lightgreen', 15000)); // Radius 15, 15s lifespan
+                }
+                break;
         }
 
         // Set a timeout to remove the boost (if it's a timed one)
-        if (boostType !== 'health_boost') {
+        if (boostType !== 'health_boost' && boostType !== 'allies') { // Health and Allies are handled by their own timers/logic
             activeEnhancement.timeoutId = setTimeout(() => {
                 currentSpeedMultiplier = 1;
                 currentShieldMultiplier = 1;
@@ -1265,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBurstFire.active = false;
                 playerBurstFire.count = 1;
                 playerBurstFire.delay = 0;
-                playerBurstFire.spreadAngle = 0; // Reset spread angle
+                playerBurstFire.spreadAngle = 0;
                 if (player.burstIntervalId) clearInterval(player.burstIntervalId);
                 player.shieldActive = false;
                 player.currentShieldHP = 0;
@@ -1275,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
                 console.log(`${boostType} ended.`);
             }, 10000); // 10 seconds duration for timed boosts
-        } else { // For health, clear display after 2 seconds
+        } else if (boostType === 'health_boost') { // For health, clear display after 2 seconds
              activeEnhancement.timeoutId = setTimeout(() => {
                 activeEnhancement.type = null;
                 activeEnhancement.endTime = 0;
@@ -1283,6 +1461,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
                 console.log(`${boostType} display ended.`);
             }, 2000);
+        } else if (boostType === 'allies') {
+            // Allies are self-managing their lifespan, but the display for 'allies' boost should clear.
+             activeEnhancement.timeoutId = setTimeout(() => {
+                activeEnhancement.type = null;
+                activeEnhancement.endTime = 0;
+                activeEnhancementDisplay.style.display = 'none';
+                updateUI();
+                console.log(`${boostType} display ended.`);
+            }, 2000); // Display for 2 seconds, allies live longer
         }
 
         updateUI();
@@ -1299,6 +1486,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
         if (player.burstIntervalId) clearInterval(player.burstIntervalId);
 
+        // Stop all ally intervals
+        allies.forEach(ally => {
+            if (ally.burstIntervalId) clearInterval(ally.burstIntervalId); // If allies ever get burst fire
+        });
+
         finalScoreText.innerText = `Your score: ${score}`;
         gameOverModal.style.display = 'flex';
 
@@ -1312,7 +1504,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let screenshotDataUrl = '';
 
     function captureScreenshotForShare() {
-        // Only hide action button for screenshot, as joystick is gone and mini-map/stats are permanent
         const uiElements = document.querySelectorAll('#action-button, #activeEnhancementDisplay');
         uiElements.forEach(el => el.style.visibility = 'hidden');
 
@@ -1331,6 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pickups.forEach(pickup => pickup.draw());
         enemies.forEach(enemy => enemy.draw());
         projectiles.forEach(projectile => projectile.draw());
+        allies.forEach(ally => ally.draw()); // Draw allies for screenshot
         player.draw();
 
         try {
