@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 20250601 Adsense by EM@KING.NET -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5903031199985375"
+     crossorigin="anonymous"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ANTIBOT - RPG Mobile Game</title>
+    <link rel="icon" type="image/x-icon" href="https://king.net/games/images/favicon-kingnet.ico">
+    <style>
+        /* Import Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        /* Body and Game Container Styling */
+        body {
+            margin: 0;
+            background-color: #0d1a26; /* Dark blue-grey */
+            color: #e0e6ed; /* Light grey */
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none; /* Prevents scrolling and other default touch actions */
+            font-size: 16px;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Hide anything outside */
+        }
+
+        /* Canvas Styling */
+        canvas {
+            display: block;
+            background-color: #1a2a3a; /* Slightly lighter dark blue */
+            border-radius: 10px;
+        }
+
+        /* UI Panel Styling (Stats, etc.) */
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            color: #00f0ff; /* Cyan */
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.7);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            pointer-events: none; /* Allows clicks to pass through to canvas if needed */
+        }
+
+        #stats-panel {
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        #level-info, #hp-info, #xp-info, #scrap-info, #score-info {
+            font-size: 1.1em;
+            color: #e0e6ed;
+            font-family: 'Press Start 2P', cursive;
+            text-shadow: none;
+            border: none;
+            box-shadow: none;
+            background: none;
+            padding: 0;
+        }
+
+        /* HP Bar Styling */
+        #hp-bar-container {
+            width: 100px;
+            height: 10px;
+            background-color: #555;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        #hp-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #ff4757; /* Red */
+            transition: width 0.2s ease-out;
+        }
+
+        /* XP Bar Styling */
+        #xp-bar-container {
+            width: 100px;
+            height: 5px;
+            background-color: #555;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        #xp-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #00ff00; /* Green */
+            transition: width 0.2s ease-out;
+        }
+
+        /* Action Buttons (Menu and Attack) */
+        #speed-button, #action-button {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #0097e6, #00a8ff); /* Blue gradient */
+            color: white;
+            border: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 150, 255, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            touch-action: manipulation; /* For better mobile responsiveness */
+        }
+        #speed-button:active, #action-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(0, 150, 255, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        #action-button {
+            background: linear-gradient(145deg, #ff4757, #e63946); /* Red gradient */
+            right: 130px; /* Position next to speed button */
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+
+        #action-button span.icon {
+            font-size: 2.5em; /* Larger icon for attack */
+            display: block;
+            line-height: 1; /* Remove extra space */
+        }
+
+        /* Joystick Styling */
+        #joystick-container {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(128, 128, 128, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #joystick-knob {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        /* Modal Base Styling */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1001; /* Above game elements */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            color: #e0e6ed;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Modal Content Styling */
+        .modal-content {
+            background-color: #223344; /* Darker blue-grey */
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #00f0ff; /* Cyan border */
+            max-width: 90%;
+            width: 500px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            animation: fadeInScale 0.3s ease-out forwards;
+            position: relative;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-content h2 {
+            font-size: 2.5em;
+            color: #00f0ff;
+            margin-bottom: 20px;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .modal-buttons {
+            margin-top: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* Modal Button Styling */
+        .modal-button, .close-button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(145deg, #2ed573, #28a745); /* Green gradient */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(46, 213, 115, 0.3);
+            transition: all 0.2s ease;
+        }
+        .modal-button:hover, .close-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(46, 213, 115, 0.4);
+        }
+        .modal-button.red {
+            background: linear-gradient(145deg, #ff4757, #e63946);
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+        }
+        .modal-button.blue {
+            background: linear-gradient(145deg, #0097e6, #00a8ff);
+            box-shadow: 0 4px 10px rgba(0, 150, 255, 0.3);
+        }
+
+        /* Close Button Styling */
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            color: #e0e6ed;
+            font-size: 1.5em;
+            padding: 5px 10px;
+            border-radius: 5px;
+            line-height: 1;
+            box-shadow: none;
+        }
+        .close-button:hover {
+            color: #ff4757;
+            transform: none;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        /* Game Over Modal Specific Styling */
+        #gameOverModal .modal-content {
+            background-color: #2a3a4c; /* Slightly different dark blue */
+        }
+        #gameOverModal h2 {
+            color: #ff4757; /* Red for game over */
+        }
+        #finalScoreText {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #00f0ff;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Social Share Buttons */
+        #socialShareButtons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        #socialShareButtons button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        #socialShareButtons button:hover {
+            opacity: 0.8;
+        }
+
+        /* RPG Menus Styling */
+        .rpg-menu-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        .rpg-menu-section h3 {
+            color: #00f0ff;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            font-family: 'Press Start 2P', cursive;
+        }
+        .rpg-menu-section label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .rpg-menu-section input[type="color"],
+        .rpg-menu-section input[type="range"] {
+            width: calc(100% - 10px);
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        .rpg-menu-section input[type="color"] {
+            height: 30px;
+            cursor: pointer;
+        }
+        .rpg-menu-section button {
+            margin-top: 10px;
+        }
+
+        /* Skill Item Styling */
+        .skill-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+        .skill-item span {
+            flex-grow: 1;
+            text-align: left;
+        }
+        .skill-item .level {
+            margin-right: 10px;
+            color: #2ed573;
+            font-weight: bold;
+        }
+        .skill-item button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            background: linear-gradient(145deg, #0097e6, #00a8ff);
+            border-radius: 5px;
+            box-shadow: none;
+        }
+        .skill-item button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        #skill-points-display {
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        /* Crafting Item Styling */
+        .crafting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+        .crafting-item button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            background: linear-gradient(145deg, #f7b731, #fc8d31); /* Orange/Yellow gradient */
+            border-radius: 5px;
+            box-shadow: none;
+        }
+        .crafting-item button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .crafting-item .cost {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-left: 10px;
+        }
+
+        /* Active Enhancement Display */
+        .active-enhancement-display {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #e0e6ed;
+            font-size: 1em;
+            border: 1px solid #00f0ff;
+            display: none;
+            z-index: 10;
+        }
+        .active-enhancement-display span {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+    </style>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- In-game UI -->
+        <div id="stats-panel" class="ui-panel">
+            <p id="score-info">Score: 0</p> <!-- Added score display -->
+            <p id="level-info">Level: 1</p>
+            <div id="hp-info">HP: <div id="hp-bar-container"><div id="hp-bar" style="width:100%;"></div></div></div>
+            <div id="xp-info">XP: <div id="xp-bar-container"><div id="xp-bar" style="width:0%;"></div></div></div>
+            <p id="scrap-info">Scrap: 0</p>
+        </div>
+
+        <button id="speed-button" class="modal-button">
+            <i class="fas fa-bars"></i> <!-- Menu icon -->
+        </button>
+        <button id="action-button">
+            <span class="icon">🔥</span> <!-- Fire icon or similar -->
+        </button>
+
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+
+        <div id="activeEnhancementDisplay" class="active-enhancement-display">
+            Active: <span id="activeEnhancementType">None</span> (<span id="activeEnhancementTime">0s</span>)
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Start Modal -->
+    <div id="startModal" class="modal">
+        <div class="modal-content">
+            <h2>ANTIBOT</h2>
+            <p style="font-size: 1.2em; margin-bottom: 25px;">Destroy all enemy AI units!</p>
+            <div class="modal-buttons">
+                <button class="modal-button" id="startGameBtn">Start Game</button>
+                <button class="modal-button blue" id="rpgMenuBtn">RPG Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RPG Menu Modal -->
+    <div id="rpgMenuModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="closeRpgMenuBtn">&times;</button>
+            <h2>RPG Menu</h2>
+
+            <div class="rpg-menu-section">
+                <h3>Character Customization</h3>
+                <label for="playerColor">Player Color:</label>
+                <input type="color" id="playerColor" value="#00f0ff">
+                <button class="modal-button blue" id="applyCustomizationBtn">Apply Customization</button>
+            </div>
+
+            <div class="rpg-menu-section">
+                <h3>Programming Skills (<span id="skill-points-display">0</span> SP)</h3>
+                <div class="skill-item">
+                    <span>Attack Optimization</span>
+                    <span class="level" id="skillAttackLevel">Lvl 1</span>
+                    <button class="modal-button" data-skill="attack">Program</button>
+                </div>
+                <div class="skill-item">
+                    <span>Defensive Protocols</span>
+                    <span class="level" id="skillDefenseLevel">Lvl 1</span>
+                    <button class="modal-button" data-skill="defense">Program</button>
+                </div>
+                <div class="skill-item">
+                    <span>Mobility Algorithms</span>
+                    <span class="level" id="skillMobilityLevel">Lvl 1</span>
+                    <button class="modal-button" data-skill="mobility">Program</button>
+                </div>
+            </div>
+
+            <div class="rpg-menu-section">
+                <h3>Crafting & Gear (<span id="crafting-scrap-display">0</span> Scrap)</h3>
+                <div class="crafting-item">
+                    <span>Temporary Speed Module</span>
+                    <span class="cost">Cost: 10 Scrap</span>
+                    <button class="modal-button" data-craft="speed_boost">Craft</button>
+                </div>
+                <div class="crafting-item">
+                    <span>Temporary Shield Matrix</span>
+                    <span class="cost">Cost: 15 Scrap</span>
+                    <button class="modal-button" data-craft="shield_boost">Craft</button>
+                </div>
+                <div class="crafting-item">
+                    <span>Weapon Overcharge</span>
+                    <span class="cost">Cost: 20 Scrap</span>
+                    <button class="modal-button" data-craft="weapon_boost">Craft</button>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-button red" id="exitRpgMenuBtn">Back to Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>GAME OVER</h2>
+            <p id="finalScoreText">Your score: 0</p>
+
+            <div id="socialShareButtons">
+                <button id="twitterShareBtn">Share on Twitter</button>
+                <button id="facebookShareBtn">Share on Facebook</button>
+                <button id="instagramShareBtn">Share on Instagram</button>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-button" id="restartGameBtn">Play Again</button>
+                <button class="modal-button blue" id="gameOverRpgMenuBtn">RPG Menu</button>
+                <button class="modal-button red" onclick="window.open('https://king.net', '_blank')">Back to KING.NET</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Message Modal (replaces alert()) -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="closeMessageModalBtn">&times;</button>
+            <h2 id="messageModalTitle"></h2>
+            <p id="messageModalText"></p>
+            <div class="modal-buttons">
+                <button class="modal-button" id="messageModalOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameContainer = document.getElementById('gameContainer');
+
+    // UI elements
+    const startModal = document.getElementById('startModal');
+    const rpgMenuModal = document.getElementById('rpgMenuModal');
+    const gameOverModal = document.getElementById('gameOverModal');
+    const messageModal = document.getElementById('messageModal'); // New message modal
+    const messageModalTitle = document.getElementById('messageModalTitle');
+    const messageModalText = document.getElementById('messageModalText');
+    const messageModalOkBtn = document.getElementById('messageModalOkBtn');
+    const closeMessageModalBtn = document.getElementById('closeMessageModalBtn');
+
+    const startGameBtn = document.getElementById('startGameBtn');
+    const rpgMenuBtn = document.getElementById('rpgMenuBtn');
+    const closeRpgMenuBtn = document.getElementById('closeRpgMenuBtn');
+    const exitRpgMenuBtn = document.getElementById('exitRpgMenuBtn');
+    const restartGameBtn = document.getElementById('restartGameBtn');
+    const gameOverRpgMenuBtn = document.getElementById('gameOverRpgMenuBtn');
+    const playerColorInput = document.getElementById('playerColor');
+    const applyCustomizationBtn = document.getElementById('applyCustomizationBtn');
+
+    const scoreEl = document.getElementById('score-info'); // Corrected ID
+    const levelInfoEl = document.getElementById('level-info');
+    const hpBarEl = document.getElementById('hp-bar');
+    const xpBarEl = document.getElementById('xp-bar');
+    const scrapInfoEl = document.getElementById('scrap-info');
+    const finalScoreText = document.getElementById('finalScoreText');
+
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystickKnob = document.getElementById('joystick-knob');
+    const actionButton = document.getElementById('action-button');
+    const speedButton = document.getElementById('speed-button'); // Now the menu button
+
+    const skillPointsDisplay = document.getElementById('skill-points-display');
+    const skillAttackLevelEl = document.getElementById('skillAttackLevel');
+    const skillDefenseLevelEl = document.getElementById('skillDefenseLevel');
+    const skillMobilityLevelEl = document.getElementById('skillMobilityLevel');
+    const skillButtons = document.querySelectorAll('.rpg-menu-section button[data-skill]');
+
+    const craftingScrapDisplay = document.getElementById('crafting-scrap-display');
+    const craftingButtons = document.querySelectorAll('.rpg-menu-section button[data-craft]');
+
+    const activeEnhancementDisplay = document.getElementById('activeEnhancementDisplay');
+    const activeEnhancementTypeEl = document.getElementById('activeEnhancementType');
+    const activeEnhancementTimeEl = document.getElementById('activeEnhancementTime');
+
+    // Social media buttons
+    const twitterShareBtn = document.getElementById('twitterShareBtn');
+    const facebookShareBtn = document.getElementById('facebookShareBtn');
+    const instagramShareBtn = document.getElementById('instagramShareBtn');
+
+    let animationFrameId = null;
+    let gameState = 'start'; // 'start', 'playing', 'rpg_menu', 'game_over'
+    let previousGameState = 'start'; // Tracks the state before entering a modal
+    let player, enemies, projectiles, pickups;
+    let worldSize = { width: 3000, height: 3000 };
+    let camera = { x: 0, y: 0 };
+    let score = 0;
+
+    // Player RPG Stats
+    let playerBaseSpeed = 5;
+    let playerBaseMaxHealth = 100;
+    let playerBaseDamage = 10;
+    let playerFireRate = 200; // ms between shots
+    let playerProjectileSpeed = 10;
+    let playerProjectileRadius = 5;
+
+    let playerLevel = 1;
+    let playerXP = 0;
+    let playerXPToNextLevel = 100;
+    let playerSkillPoints = 0;
+    let playerScrap = 0;
+
+    // Skill Levels (Programming Skills)
+    let skillAttackLevel = 1; // Affects damage and fire rate
+    let skillDefenseLevel = 1; // Affects max health and maybe shield duration/strength
+    let skillMobilityLevel = 1; // Affects speed and turn speed
+
+    // Active Enhancements (limited time)
+    let activeEnhancement = {
+        type: null,
+        endTime: 0,
+        timeoutId: null
+    };
+    let currentSpeedMultiplier = 1;
+    let currentShieldMultiplier = 1; // For damage reduction or temporary HP
+    let currentDamageMultiplier = 1; // For weapon boost
+
+
+    // --- Game Setup ---
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function initGame() {
+        resizeCanvas();
+        // Initialize player and game entities
+        player = new Player(worldSize.width / 2, worldSize.height / 2, 20, playerColorInput.value);
+        enemies = [];
+        projectiles = [];
+        pickups = []; // Includes resources and temporary boosts
+        score = 0;
+        playerXP = 0;
+        playerXPToNextLevel = 100; // Reset XP for new game, if not persistent
+        playerScrap = 0;
+
+        // Reset active enhancements
+        clearTimeout(activeEnhancement.timeoutId);
+        activeEnhancement = { type: null, endTime: 0, timeoutId: null };
+        currentSpeedMultiplier = 1;
+        currentShieldMultiplier = 1;
+        currentDamageMultiplier = 1;
+        activeEnhancementDisplay.style.display = 'none';
+
+        // Spawn initial enemies and resources
+        for (let i = 0; i < 15; i++) { spawnEnemy(); }
+        for (let i = 0; i < 20; i++) { spawnPickup('resource'); }
+        for (let i = 0; i < 3; i++) { spawnPickup('temp_boost'); } // Spawn some initial temp boosts
+
+        updateUI(); // Update UI after player and game state are initialized
+        if (animationFrameId) cancelAnimationFrame(animationFrameId); // Cancel any previous loop
+        animationFrameId = requestAnimationFrame(gameLoop); // Start new game loop
+        gameState = 'playing'; // Set game state
+        startModal.style.display = 'none';
+        gameOverModal.style.display = 'none';
+        rpgMenuModal.style.display = 'none';
+    }
+
+    function updateUI() {
+        if (!player) return; // Prevent errors if player is not yet initialized
+
+        scoreEl.textContent = `Score: ${score}`;
+        levelInfoEl.textContent = `Level: ${playerLevel}`;
+        hpBarEl.style.width = `${(player.health / player.maxHealth) * 100}%`;
+        xpBarEl.style.width = `${(playerXP / playerXPToNextLevel) * 100}%`;
+        scrapInfoEl.textContent = `Scrap: ${playerScrap}`;
+
+        // RPG Menu UI updates
+        skillPointsDisplay.textContent = playerSkillPoints;
+        skillAttackLevelEl.textContent = `Lvl ${skillAttackLevel}`;
+        skillDefenseLevelEl.textContent = `Lvl ${skillDefenseLevel}`;
+        skillMobilityLevelEl.textContent = `Lvl ${skillMobilityLevel}`;
+        craftingScrapDisplay.textContent = playerScrap;
+
+        skillButtons.forEach(button => {
+            const skillType = button.dataset.skill;
+            let currentLevel;
+            if (skillType === 'attack') currentLevel = skillAttackLevel;
+            else if (skillType === 'defense') currentLevel = skillDefenseLevel;
+            else if (skillType === 'mobility') currentLevel = skillMobilityLevel;
+
+            // Enable skill button if skill points are available and not max level
+            if (playerSkillPoints > 0 && currentLevel < 10) { // Max level for skills
+                button.disabled = false;
+                button.style.opacity = '1';
+            } else {
+                button.disabled = true;
+                button.style.opacity = '0.5';
+            }
+        });
+
+        craftingButtons.forEach(button => {
+            const craftType = button.dataset.craft;
+            let cost = 0;
+            if (craftType === 'speed_boost') cost = 10;
+            else if (craftType === 'shield_boost') cost = 15;
+            else if (craftType === 'weapon_boost') cost = 20;
+
+            // Enable craft button if enough scrap is available
+            if (playerScrap >= cost) {
+                button.disabled = false;
+                button.style.opacity = '1';
+            } else {
+                button.disabled = true;
+                button.style.opacity = '0.5';
+            }
+        });
+
+        // Active enhancement display
+        if (activeEnhancement.type) {
+            activeEnhancementDisplay.style.display = 'block';
+            activeEnhancementTypeEl.textContent = activeEnhancement.type.replace('_', ' ').toUpperCase();
+            const timeLeft = Math.max(0, Math.ceil((activeEnhancement.endTime - performance.now()) / 1000));
+            activeEnhancementTimeEl.textContent = `${timeLeft}s`;
+        } else {
+            activeEnhancementDisplay.style.display = 'none';
+        }
+    }
+
+    // --- Joystick Controls ---
+    let joystickActive = false;
+    let joystickStartX = 0;
+    let joystickStartY = 0;
+    let playerAngle = 0;
+
+    function handleJoystickStart(e) {
+        e.preventDefault();
+        if (gameState !== 'playing') return;
+        joystickActive = true;
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        const rect = joystickContainer.getBoundingClientRect();
+        joystickStartX = rect.left + rect.width / 2;
+        joystickStartY = rect.top + rect.height / 2;
+    }
+    function handleJoystickMove(e) {
+        if (!joystickActive || gameState !== 'playing') return;
+        e.preventDefault();
+        const touch = e.type === 'touchmove' ? e.touches[0] : e;
+        const deltaX = touch.clientX - joystickStartX;
+        const deltaY = touch.clientY - joystickStartY;
+        playerAngle = Math.atan2(deltaY, deltaX);
+        const maxMove = joystickContainer.clientWidth / 4;
+        const moveX = Math.cos(playerAngle) * maxMove;
+        const moveY = Math.sin(playerAngle) * maxMove;
+        joystickKnob.style.transform = `translate(${moveX}px, ${moveY}px)`;
+    }
+    function handleJoystickEnd(e) {
+        if (!joystickActive || gameState !== 'playing') return;
+        e.preventDefault();
+        joystickActive = false;
+        joystickKnob.style.transform = `translate(0px, 0px)`;
+    }
+    joystickContainer.addEventListener('mousedown', handleJoystickStart);
+    document.addEventListener('mousemove', handleJoystickMove);
+    document.addEventListener('mouseup', handleJoystickEnd);
+    joystickContainer.addEventListener('touchstart', handleJoystickStart, { passive: false });
+    document.addEventListener('touchmove', handleJoystickMove, { passive: false });
+    document.addEventListener('touchend', handleJoystickEnd);
+
+    // --- Game Objects ---
+    class Entity {
+        constructor(x, y, radius, color) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.color = color;
+        }
+
+        draw() {
+            ctx.beginPath();
+            // Draw relative to camera
+            ctx.arc(this.x - camera.x, this.y - camera.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        distanceTo(other) {
+            return Math.hypot(this.x - other.x, this.y - other.y);
+        }
+
+        checkCollision(other) {
+            return this.distanceTo(other) < (this.radius + other.radius);
+        }
+    }
+
+    class Player extends Entity {
+        constructor(x, y, radius, color) {
+            super(x, y, radius, color);
+            this.baseHealth = playerBaseMaxHealth;
+            this.maxHealth = this.baseHealth; // This will scale with defense skill
+            this.health = this.maxHealth;
+            this.baseSpeed = playerBaseSpeed;
+            this.speed = this.baseSpeed; // This will scale with mobility skill and temporary boosts
+            this.baseDamage = playerBaseDamage;
+            this.damage = this.baseDamage; // This will scale with attack skill and temporary boosts
+            this.fireRate = playerFireRate; // milliseconds
+            this.lastShotTime = 0;
+            this.shieldActive = false; // For temporary shield boost
+            this.currentShieldHP = 0; // Temporary HP from shield boost
+        }
+
+        update() {
+            // Apply skill effects to stats
+            this.maxHealth = playerBaseMaxHealth + (skillDefenseLevel - 1) * 20; // +20 HP per skill level
+            this.health = Math.min(this.health, this.maxHealth); // Cap health at new max
+            this.speed = this.baseSpeed + (skillMobilityLevel - 1) * 1 + (this.baseSpeed * (currentSpeedMultiplier - 1)); // +1 speed per skill level, then apply temp multiplier
+            this.damage = playerBaseDamage + (skillAttackLevel - 1) * 5 + (this.baseDamage * (currentDamageMultiplier - 1)); // +5 damage per skill level, then apply temp multiplier
+            this.fireRate = Math.max(50, playerFireRate - (skillAttackLevel - 1) * 15); // Faster fire rate per skill level (min 50ms)
+
+            if (joystickActive) {
+                this.x += Math.cos(playerAngle) * this.speed;
+                this.y += Math.sin(playerAngle) * this.speed;
+            }
+
+            // Keep player within world boundaries
+            this.x = Math.max(this.radius, Math.min(worldSize.width - this.radius, this.x));
+            this.y = Math.max(this.radius, Math.min(worldSize.height - this.radius, this.y));
+
+            // Update camera to follow player (camera coordinates are the top-left of the view)
+            camera.x = this.x - canvas.width / 2;
+            camera.y = this.y - canvas.height / 2;
+        }
+
+        draw() {
+            super.draw(); // Draw base circle
+
+            // Draw player-specific details (e.g., eye, weapon attachment)
+            ctx.beginPath();
+            ctx.arc(this.x - camera.x + Math.cos(playerAngle) * (this.radius * 0.5),
+                    this.y - camera.y + Math.sin(playerAngle) * (this.radius * 0.5),
+                    this.radius * 0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.8)'; // Eye/Front
+            ctx.fill();
+
+            // Draw shield if active
+            if (this.shieldActive) {
+                const shieldColor = `rgba(0, 200, 255, ${this.currentShieldHP / (playerBaseMaxHealth * currentShieldMultiplier) * 0.5 + 0.2})`; // Opacity based on remaining shield
+                ctx.beginPath();
+                ctx.arc(this.x - camera.x, this.y - camera.y, this.radius + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = shieldColor;
+                ctx.lineWidth = 5;
+                ctx.stroke();
+            }
+        }
+
+        takeDamage(damage) {
+            if (this.shieldActive && this.currentShieldHP > 0) {
+                const remainingDamage = damage - this.currentShieldHP;
+                this.currentShieldHP -= damage;
+                if (this.currentShieldHP <= 0) {
+                    this.shieldActive = false; // Shield broken
+                    clearTimeout(activeEnhancement.timeoutId); // Clear shield timeout
+                    activeEnhancement = { type: null, endTime: 0, timeoutId: null };
+                    currentShieldMultiplier = 1;
+                }
+                if (remainingDamage > 0) {
+                    this.health -= remainingDamage;
+                }
+            } else {
+                this.health -= damage;
+            }
+            if (this.health <= 0) {
+                gameOver();
+            }
+        }
+
+        gainXP(amount) {
+            playerXP += amount;
+            while (playerXP >= playerXPToNextLevel) {
+                playerXP -= playerXPToNextLevel;
+                playerXPToNextLevel = Math.floor(playerXPToNextLevel * 1.5); // Increase XP requirement
+                playerLevel++;
+                playerSkillPoints++;
+                console.log(`Leveled up to Level ${playerLevel}! Gained 1 Skill Point.`);
+            }
+        }
+
+        gainScrap(amount) {
+            playerScrap += amount;
+        }
+
+        // Method to shoot a projectile
+        shoot() {
+            const currentTime = performance.now();
+            if (currentTime - this.lastShotTime > this.fireRate) {
+                const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
+                const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
+                projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
+                this.lastShotTime = currentTime;
+            }
+        }
+    }
+
+    class Enemy extends Entity {
+        constructor(x, y, radius, color, type) {
+            super(x, y, radius, color);
+            this.type = type; // 'drone', 'robot', 'turret'
+            this.speed = 1 + (playerLevel * 0.1); // Enemies get faster with player level
+            this.health = 30 + (playerLevel * 10); // Enemies get tougher
+            this.damage = 5 + (playerLevel * 2); // Enemies hit harder
+            this.target = player;
+            this.fireRate = 1000; // ms
+            this.lastShotTime = 0;
+            this.xpValue = 20 + (playerLevel * 5); // XP for killing
+            this.scrapValue = 5 + (playerLevel * 1); // Scrap for killing
+        }
+
+        update() {
+            // Only update if player exists (game is running)
+            if (!this.target) return;
+
+            const angleToTarget = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            this.x += Math.cos(angleToTarget) * this.speed;
+            this.y += Math.sin(angleToTarget) * this.speed;
+
+            // Simple boundary check for enemies
+            this.x = Math.max(0, Math.min(worldSize.width, this.x));
+            this.y = Math.max(0, Math.min(worldSize.height, this.y));
+
+            // Enemy attacks player if close enough and cooldown is ready
+            if (this.distanceTo(player) < 300 && performance.now() - this.lastShotTime > this.fireRate) {
+                this.attack();
+                this.lastShotTime = performance.now();
+            }
+        }
+
+        attack() {
+            // Enemies shoot projectiles towards player
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            projectiles.push(new Projectile(this.x, this.y, 5, 'red', angle, 7, this.damage, 'enemy'));
+        }
+
+        takeDamage(damage) {
+            this.health -= damage;
+            if (this.health <= 0) {
+                player.gainXP(this.xpValue);
+                player.gainScrap(this.scrapValue);
+                return true; // Indicates enemy was destroyed
+            }
+            return false;
+        }
+    }
+
+    class Projectile extends Entity {
+        constructor(x, y, radius, color, angle, speed, damage, owner) {
+            super(x, y, radius, color);
+            this.angle = angle;
+            this.speed = speed;
+            this.damage = damage;
+            this.owner = owner; // 'player' or 'enemy'
+        }
+
+        update() {
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+        }
+    }
+
+    class Pickup extends Entity {
+        constructor(x, y, radius, type) {
+            super(x, y, radius, 'lime'); // Default color for resource
+            this.type = type; // 'resource' or 'temp_boost'
+            if (type === 'temp_boost') {
+                const boostTypes = ['speed', 'shield', 'weapon'];
+                this.boostType = boostTypes[Math.floor(Math.random() * boostTypes.length)];
+                this.color = this.getColorForBoostType(this.boostType);
+                this.radius = 15; // Larger for boost pickups
+            } else {
+                this.color = 'yellow'; // Scrap metal color
+                this.radius = 8;
+            }
+        }
+
+        getColorForBoostType(boostType) {
+            switch(boostType) {
+                case 'speed': return 'cyan';
+                case 'shield': return 'blue';
+                case 'weapon': return 'orange';
+                default: return 'gray';
+            }
+        }
+
+        draw() {
+            super.draw();
+            // Draw a symbol for boost types or resource
+            if (this.type === 'temp_boost') {
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let symbol = '';
+                switch(this.boostType) {
+                    case 'speed': symbol = '⚡'; break;
+                    case 'shield': symbol = '🛡️'; break;
+                    case 'weapon': symbol = '⚔️'; break;
+                }
+                ctx.fillText(symbol, this.x - camera.x, this.y - camera.y);
+            } else {
+                ctx.fillStyle = 'black';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('S', this.x - camera.x, this.y - camera.y); // 'S' for Scrap
+            }
+        }
+    }
+
+
+    // --- Spawning Functions ---
+    function spawnEnemy() {
+        const radius = 25;
+        const x = Math.random() * worldSize.width;
+        const y = Math.random() * worldSize.height;
+        const types = ['drone', 'robot']; // Turret could be stationary
+        const type = types[Math.floor(Math.random() * types.length)];
+        let color = 'gray';
+        if (type === 'robot') color = 'darkred';
+        enemies.push(new Enemy(x, y, radius, color, type));
+    }
+
+    function spawnPickup(type) {
+        const radius = type === 'temp_boost' ? 15 : 8;
+        const x = Math.random() * worldSize.width;
+        const y = Math.random() * worldSize.height;
+        pickups.push(new Pickup(x, y, radius, type));
+    }
+
+
+    // --- Game Loop ---
+    function gameLoop() {
+        if (gameState !== 'playing') {
+            cancelAnimationFrame(animationFrameId);
+            return;
+        }
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = canvas.style.backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Update entities
+        player.update();
+        enemies.forEach(enemy => enemy.update());
+        projectiles.forEach(projectile => projectile.update());
+
+        // Collision Detection
+        // Player Projectile vs Enemy
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const proj = projectiles[i];
+            if (proj.owner === 'player') {
+                let hitEnemy = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (proj.checkCollision(enemy)) {
+                        hitEnemy = true;
+                        if (enemy.takeDamage(proj.damage)) {
+                            enemies.splice(j, 1); // Remove enemy
+                            spawnEnemy(); // Replace enemy
+                            score += 10;
+                        }
+                        break;
+                    }
+                }
+                // Remove projectile if it hit an enemy or went out of bounds
+                if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // Enemy Projectile vs Player
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            const proj = projectiles[i];
+            if (proj.owner === 'enemy') {
+                if (proj.checkCollision(player)) {
+                    player.takeDamage(proj.damage);
+                    projectiles.splice(i, 1); // Remove projectile
+                } else if (proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                    projectiles.splice(i, 1); // Remove projectile if out of bounds
+                }
+            }
+        }
+
+        // Player vs Pickups
+        for (let i = pickups.length - 1; i >= 0; i--) {
+            const pickup = pickups[i];
+            if (player.checkCollision(pickup)) {
+                if (pickup.type === 'resource') {
+                    player.gainScrap(Math.floor(Math.random() * 5) + 1); // Gain 1-5 scrap
+                    spawnPickup('resource'); // Replace resource
+                } else if (pickup.type === 'temp_boost') {
+                    applyTemporaryBoost(pickup.boostType);
+                    spawnPickup('temp_boost'); // Replace boost
+                }
+                pickups.splice(i, 1); // Remove pickup
+            }
+        }
+
+        // Player vs Enemy (body collision, not projectile) - simple knockback/damage
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            if (player.checkCollision(enemy)) {
+                // Simple knockback
+                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                player.x += Math.cos(angle) * 10;
+                player.y += Math.sin(angle) * 10;
+                player.takeDamage(enemy.damage / 2); // Smaller damage for body collision
+            }
+        }
+
+        // Draw entities
+        pickups.forEach(pickup => pickup.draw());
+        enemies.forEach(enemy => enemy.draw());
+        projectiles.forEach(projectile => projectile.draw());
+        player.draw();
+
+        updateUI();
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- Message Modal Functions ---
+    function showMessage(title, text) {
+        messageModalTitle.textContent = title;
+        messageModalText.textContent = text;
+        messageModal.style.display = 'flex';
+    }
+
+    messageModalOkBtn.addEventListener('click', () => {
+        messageModal.style.display = 'none';
+    });
+    closeMessageModalBtn.addEventListener('click', () => {
+        messageModal.style.display = 'none';
+    });
+
+
+    // --- RPG Menu Functions ---
+    function openRpgMenu() {
+        previousGameState = gameState; // Store current state
+        gameState = 'rpg_menu';
+        startModal.style.display = 'none';
+        gameOverModal.style.display = 'none';
+        rpgMenuModal.style.display = 'flex';
+        if (animationFrameId) cancelAnimationFrame(animationFrameId); // Pause game loop
+        animationFrameId = null; // Ensure animation frame ID is cleared
+        updateUI(); // Ensure RPG menu elements are updated
+    }
+
+    function closeRpgMenu() {
+        rpgMenuModal.style.display = 'none';
+        if (previousGameState === 'playing') {
+            gameState = 'playing';
+            // Only restart game loop if it was playing and not already running
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        } else if (previousGameState === 'game_over') {
+            gameState = 'game_over'; // Keep game over state
+            gameOverModal.style.display = 'flex'; // Re-show game over modal
+        } else { // Came from 'start'
+            gameState = 'start';
+            startModal.style.display = 'flex';
+        }
+        updateUI();
+    }
+
+    function applyCustomization() {
+        if (player) {
+            player.color = playerColorInput.value;
+            showMessage("Customization Applied", "Player color updated!");
+        } else {
+            showMessage("Error", "Start the game first to customize your player!");
+        }
+    }
+
+    function programSkill(skillType) {
+        if (playerSkillPoints <= 0) {
+            showMessage("No Skill Points", "You need more skill points to program new skills!");
+            return;
+        }
+
+        let currentLevel;
+        if (skillType === 'attack') currentLevel = skillAttackLevel;
+        else if (skillType === 'defense') currentLevel = skillDefenseLevel;
+        else if (skillType === 'mobility') currentLevel = skillMobilityLevel;
+
+        if (currentLevel >= 10) { // Max level for skills
+            showMessage("Max Level Reached", `Your ${skillType} skill is already at max level.`);
+            return;
+        }
+
+        playerSkillPoints--;
+        if (skillType === 'attack') {
+            skillAttackLevel = Math.min(10, skillAttackLevel + 1);
+        } else if (skillType === 'defense') {
+            skillDefenseLevel = Math.min(10, skillDefenseLevel + 1);
+        } else if (skillType === 'mobility') {
+            skillMobilityLevel = Math.min(10, skillMobilityLevel + 1);
+        }
+        showMessage("Skill Programmed!", `You've increased your ${skillType} skill!`);
+        updateUI();
+    }
+
+    function craftItem(craftType) {
+        let cost = 0;
+        if (craftType === 'speed_boost') cost = 10;
+        else if (craftType === 'shield_boost') cost = 15;
+        else if (craftType === 'weapon_boost') cost = 20;
+
+        if (playerScrap >= cost) {
+            playerScrap -= cost;
+            applyTemporaryBoost(craftType);
+            showMessage("Crafted!", `You crafted a ${craftType.replace('_', ' ')}!`);
+        } else {
+            showMessage("Crafting Failed", "Not enough scrap!");
+        }
+        updateUI();
+    }
+
+    function applyTemporaryBoost(boostType) {
+        clearTimeout(activeEnhancement.timeoutId); // Clear any existing boost
+
+        activeEnhancement.type = boostType;
+        activeEnhancement.endTime = performance.now() + 10000; // 10 seconds duration
+
+        // Reset all multipliers first
+        currentSpeedMultiplier = 1;
+        currentShieldMultiplier = 1;
+        currentDamageMultiplier = 1;
+        player.shieldActive = false;
+        player.currentShieldHP = 0;
+
+        switch(boostType) {
+            case 'speed_boost':
+                currentSpeedMultiplier = 1.8; // 80% faster
+                break;
+            case 'shield_boost':
+                currentShieldMultiplier = 2; // Shield absorbs double player's base max health in damage
+                player.shieldActive = true;
+                player.currentShieldHP = playerBaseMaxHealth * currentShieldMultiplier;
+                break;
+            case 'weapon_boost':
+                currentDamageMultiplier = 2.0; // Double damage
+                break;
+        }
+
+        // Set a timeout to remove the boost
+        activeEnhancement.timeoutId = setTimeout(() => {
+            currentSpeedMultiplier = 1;
+            currentShieldMultiplier = 1;
+            currentDamageMultiplier = 1;
+            player.shieldActive = false;
+            player.currentShieldHP = 0;
+            activeEnhancement.type = null;
+            activeEnhancement.endTime = 0;
+            activeEnhancementDisplay.style.display = 'none';
+            updateUI(); // Update UI to reflect boost ending
+            console.log(`${boostType} ended.`);
+        }, 10000); // 10 seconds duration
+
+        updateUI(); // Update UI to reflect boost starting
+        console.log(`Applied boost: ${boostType}`);
+    }
+
+
+    // --- Game Over ---
+    function gameOver() {
+        if (gameState === 'game_over') return; // Prevent multiple calls
+        gameState = 'game_over'; // Set state immediately
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+
+        finalScoreText.innerText = `Your score: ${score}`;
+        gameOverModal.style.display = 'flex';
+
+        // Capture screenshot for social media
+        captureScreenshotForShare();
+    }
+
+    // --- Social Media Sharing ---
+    let screenshotDataUrl = '';
+
+    function captureScreenshotForShare() {
+        // Temporarily hide UI elements to capture a clean screenshot
+        const uiElements = document.querySelectorAll('.ui-panel, #joystick-container, #speed-button, #action-button, #activeEnhancementDisplay');
+        uiElements.forEach(el => el.style.visibility = 'hidden');
+
+        // Clear canvas before drawing for screenshot
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = canvas.style.backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw entities using the same logic as gameLoop to ensure consistency
+        pickups.forEach(pickup => pickup.draw());
+        enemies.forEach(enemy => enemy.draw());
+        projectiles.forEach(projectile => projectile.draw());
+        player.draw();
+
+        try {
+            screenshotDataUrl = canvas.toDataURL('image/png');
+        } catch (error) {
+            console.error("Error capturing screenshot:", error);
+            screenshotDataUrl = ''; // Clear if there's an error
+        } finally {
+            // Restore UI elements
+            uiElements.forEach(el => el.style.visibility = 'visible');
+        }
+    }
+
+    twitterShareBtn.addEventListener('click', () => {
+        const text = encodeURIComponent(`I destroyed ${score} AI units in ANTIBOT! Can you beat my score? #ANTIBOT #MobileGame #RPG`);
+        const url = encodeURIComponent(window.location.href);
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+        window.open(twitterUrl, '_blank');
+    });
+
+    facebookShareBtn.addEventListener('click', () => {
+        const quote = encodeURIComponent(`I scored ${score} in ANTIBOT!`);
+        const href = encodeURIComponent(window.location.href);
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?quote=${quote}&href=${href}`;
+        window.open(facebookUrl, '_blank');
+    });
+
+    instagramShareBtn.addEventListener('click', () => {
+        // In a real app, you'd upload the image to a server and then prompt the user
+        // to share. For a web-only demo, we offer a download.
+        showMessage("Sharing Info", 'Instagram sharing from a web page is complex and usually requires server-side integration or users to manually upload. Please save the screenshot and share it manually!');
+        if (screenshotDataUrl) {
+            const link = document.createElement('a');
+            link.href = screenshotDataUrl;
+            link.download = `antibot_score_${score}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    });
+
+
+    // --- Event Listeners ---
+    startGameBtn.addEventListener('click', initGame);
+    rpgMenuBtn.addEventListener('click', openRpgMenu);
+    closeRpgMenuBtn.addEventListener('click', closeRpgMenu);
+    exitRpgMenuBtn.addEventListener('click', closeRpgMenu); // Back to start from RPG menu
+    restartGameBtn.addEventListener('click', initGame); // Restart from game over
+    gameOverRpgMenuBtn.addEventListener('click', openRpgMenu); // Open RPG menu from game over
+
+    applyCustomizationBtn.addEventListener('click', applyCustomization);
+
+    skillButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            programSkill(e.target.dataset.skill);
+        });
+    });
+
+    craftingButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            craftItem(e.target.dataset.craft);
+        });
+    });
+
+    actionButton.addEventListener('click', () => {
+        if (gameState === 'playing' && player) { // Ensure player exists before shooting
+            player.shoot();
+        }
+    });
+    // Use speed button as a menu button now
+    speedButton.addEventListener('click', openRpgMenu);
+
+
+    // Initial state setup: show the start modal
+    startModal.style.display = 'flex';
+});
+</script>
+
+</body>
+</html>
