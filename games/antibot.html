@@ -64,7 +64,8 @@
             gap: 5px;
         }
 
-        #level-info, #hp-info, #xp-info, #scrap-info, #score-info {
+        /* Re-added HP info elements for cleaner UI */
+        #score-info, #level-info, #hp-info {
             font-size: 1.1em;
             color: #e0e6ed;
             font-family: 'Press Start 2P', cursive;
@@ -75,7 +76,7 @@
             padding: 0;
         }
 
-        /* HP Bar Styling */
+        /* HP Bar Styling - still needed internally by player object, but not shown on UI */
         #hp-bar-container {
             width: 100px;
             height: 10px;
@@ -83,6 +84,7 @@
             border-radius: 5px;
             overflow: hidden;
             margin-top: 5px;
+            display: block; /* Ensure it's displayed */
         }
         #hp-bar {
             height: 100%;
@@ -90,21 +92,8 @@
             background-color: #ff4757; /* Red */
             transition: width 0.2s ease-out;
         }
-
-        /* XP Bar Styling */
         #xp-bar-container {
-            width: 100px;
-            height: 5px;
-            background-color: #555;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 2px;
-        }
-        #xp-bar {
-            height: 100%;
-            width: 0%;
-            background-color: #00ff00; /* Green */
-            transition: width 0.2s ease-out;
+            display: none; /* Hide XP bar container */
         }
 
         /* Action Button (for firing) */
@@ -232,7 +221,7 @@
         }
         .modal-button.red {
             background: linear-gradient(145deg, #ff4757, #e63946);
-            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+            box-shadow: 0 44px 10px rgba(255, 71, 87, 0.3);
         }
         .modal-button.blue {
             background: linear-gradient(145deg, #0097e6, #00a8ff);
@@ -334,8 +323,9 @@
             <p id="score-info">Score: 0</p>
             <p id="level-info">Level: 1</p>
             <div id="hp-info">HP: <div id="hp-bar-container"><div id="hp-bar" style="width:100%;"></div></div></div>
-            <div id="xp-info">XP: <div id="xp-bar-container"><div id="xp-bar" style="width:0%;"></div></div></div>
-            <p id="scrap-info">Scrap: 0</p>
+            <!-- Removed XP, Scrap info elements for cleaner UI -->
+            <!-- <div id="xp-info">XP: <div id="xp-bar-container"><div id="xp-bar" style="width:0%;"></div></div></div> -->
+            <!-- <p id="scrap-info">Scrap: 0</p> -->
         </div>
 
         <!-- Mini-Map Container -->
@@ -346,8 +336,6 @@
         <button id="action-button">
             <span class="icon">🔥</span> <!-- Fire icon or similar -->
         </button>
-
-        <!-- Joystick elements removed from HTML as per user request -->
 
         <div id="activeEnhancementDisplay" class="active-enhancement-display">
             Active: <span id="activeEnhancementType">None</span> (<span id="activeEnhancementTime">0s</span>)
@@ -400,6 +388,11 @@
     </div>
 
 <script>
+    // Moved screenshotDataUrl to global scope and changed to 'var' for explicit mutability
+    // This is a workaround for a specific environment issue where 'let' might be treated as 'const'.
+    // Changing to 'let' directly in the global scope if 'var' doesn't resolve it might also work.
+    let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
+
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -419,9 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scoreEl = document.getElementById('score-info');
     const levelInfoEl = document.getElementById('level-info');
-    const hpBarEl = document.getElementById('hp-bar');
-    const xpBarEl = document.getElementById('xp-bar');
-    const scrapInfoEl = document.getElementById('scrap-info');
+    const hpBarEl = document.getElementById('hp-bar'); // Re-added hpBarEl
+    // Removed direct references to elements no longer in HTML
+    // const xpBarEl = document.getElementById('xp-bar');
+    // const scrapInfoEl = document.getElementById('scrap-info');
+    // We still need to find these elements to hide them even if they exist in the HTML (but aren't used for displaying values)
+    const hpBarContainer = document.getElementById('hp-bar-container');
+    const xpBarContainer = document.getElementById('xp-bar-container');
+    const scrapInfoEl = document.getElementById('scrap-info'); // Still need to get this to hide the element itself
 
     const finalScoreText = document.getElementById('finalScoreText');
 
@@ -504,16 +502,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ensure audio context is resumed on first user interaction
     let audioContextResumed = false;
-    function resumeAudioContext() {
-        if (!audioContextResumed) {
-            Tone.start();
-            audioContextResumed = true;
-            console.log("AudioContext resumed.");
+    // Moved Tone.start() call to initGame for user gesture.
+
+    // Helper to get color for boost type (moved to global scope)
+    function getColorForBoostType(boostType) {
+        switch(boostType) {
+            case 'speed_boost': return 'cyan';
+            case 'shield_boost': return 'blue';
+            case 'weapon_boost': return 'orange';
+            case 'burst_fire_boost': return 'magenta';
+            case 'health_boost': return 'pink';
+            case 'missile_spray': return 'purple';
+            case 'allies': return 'lightgreen';
+            default: return 'gray';
         }
     }
-    // Listen for any click to resume audio context
-    document.addEventListener('click', resumeAudioContext, { once: true });
-    document.addEventListener('keydown', resumeAudioContext, { once: true });
 
 
     // --- Game Setup ---
@@ -536,7 +539,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function initGame() {
+    async function initGame() { // Made initGame async
+        // Resume AudioContext on first user interaction
+        try {
+            if (!audioContextResumed) {
+                await Tone.start();
+                audioContextResumed = true;
+                console.log("AudioContext resumed on game start.");
+            }
+        } catch (e) {
+            console.error("Failed to resume AudioContext:", e);
+            showMessage("Audio Error", "Could not start audio. Please allow audio playback in your browser.");
+            audioContextResumed = false;
+        }
+
+
         resizeCanvas();
         miniMapCanvas.width = 170;
         miniMapCanvas.height = 170;
@@ -565,6 +582,13 @@ document.addEventListener('DOMContentLoaded', () => {
         statsPanel.style.display = 'flex';
         miniMapContainer.style.display = 'block';
 
+        // Hide HP, XP, and Scrap displays
+        // Re-enabled HP bar display (removed 'display: none' from style section)
+        if (hpBarContainer) hpBarContainer.style.display = 'block';
+        if (xpBarContainer) xpBarContainer.style.display = 'none';
+        if (scrapInfoEl) scrapInfoEl.style.display = 'none';
+
+
         // Spawn initial entities: a mix of resources and random power-ups
         for (let i = 0; i < 25; i++) {
             const randomType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
@@ -589,9 +613,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         scoreEl.textContent = `Score: ${score}`;
         levelInfoEl.textContent = `Level: ${playerLevel}`;
-        hpBarEl.style.width = `${(player.health / player.maxHealth) * 100}%`;
-        xpBarEl.style.width = `${(playerXP / playerXPToNextLevel) * 100}%`;
-        scrapInfoEl.textContent = `Scrap: ${playerScrap}`;
+        // Update HP bar width
+        if (hpBarEl) hpBarEl.style.width = `${(player.health / player.maxHealth) * 100}%`;
+        // Removed updates for XP, Scrap bar widths and text content
+        // xpBarEl.style.width = `${(playerXP / playerXPToNextLevel) * 100}%`;
+        // scrapInfoEl.textContent = `Scrap: ${playerScrap}`;
+
 
         // Active enhancement display
         if (activeEnhancement.type) {
@@ -626,6 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault(); // Prevent default spacebar action (like scrolling)
         }
     });
+
 
     // --- Game Objects ---
     class Entity {
@@ -664,7 +692,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.baseSpeed = playerBaseSpeed;
             this.speed = this.baseSpeed;
             this.baseDamage = playerBaseDamage;
-            this.damage = this.baseDamage;
             this.fireRate = playerFireRate;
             this.lastShotTime = 0;
             this.shieldActive = false;
@@ -672,6 +699,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.burstFireActive = false;
             this.burstShotCount = 0;
             this.burstIntervalId = null;
+            this.isFlashing = false; // New property for flashing effect
+            this.flashEndTime = 0; // New property for flashing effect duration
+            this.flashColor = 'white'; // Color for the flash effect
         }
 
         update() {
@@ -699,6 +729,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             camera.x = this.x - canvas.width / 2;
             camera.y = this.y - canvas.height / 2;
+
+            // Update flashing state
+            if (this.isFlashing && performance.now() > this.flashEndTime) {
+                this.isFlashing = false;
+            }
         }
 
         draw() {
@@ -743,6 +778,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.strokeStyle = shieldColor;
                 ctx.lineWidth = 5;
                 ctx.stroke();
+            }
+            // Power-up flash effect
+            if (this.isFlashing) {
+                ctx.save();
+                ctx.translate(this.x - camera.x, this.y - camera.y);
+                const pulseScale = 1 + Math.sin(performance.now() * 0.02) * 0.1; // Pulsing effect
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * pulseScale * 1.2, 0, Math.PI * 2); // Larger pulsing arc
+                ctx.strokeStyle = this.flashColor;
+                ctx.lineWidth = 5;
+                ctx.globalAlpha = Math.abs(Math.sin(performance.now() * 0.015)); // Faster, more pronounced pulsing alpha
+                ctx.stroke();
+                ctx.restore();
             }
         }
 
@@ -804,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const bulletX = this.x + Math.cos(missileAngle) * (this.radius + playerProjectileRadius);
                             const bulletY = this.y + Math.sin(missileAngle) * (this.radius + playerProjectileRadius);
                             projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', missileAngle, playerProjectileSpeed, this.damage, 'player'));
-                            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n");
+                            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now()); // Pass Tone.now()
                             this.burstShotCount++;
                         } else {
                             clearInterval(this.burstIntervalId);
@@ -816,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
                     const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
                     projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
-                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n");
+                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now()); // Pass Tone.now()
                 }
                 this.lastShotTime = currentTime;
             }
@@ -857,7 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
         attack() {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this));
-            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n");
+            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now()); // Pass Tone.now()
         }
 
         takeDamage(damage) {
@@ -951,7 +999,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const angle = Math.atan2(targetEnemy.y - this.y, targetEnemy.x - this.x);
             // Allied projectiles are green and hurt enemies (friendly fire to enemies)
             projectiles.push(new Projectile(this.x, this.y, 6, 'lightgreen', angle, 9, this.damage, 'ally', this));
-            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C5", "16n"); // A slightly higher pitch for allies
         }
 
         draw() {
@@ -995,24 +1042,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (type === 'temp_boost') {
                 const boostTypes = ['speed', 'shield', 'weapon', 'burst_fire', 'health', 'missile_spray', 'allies']; // Added allies boost
                 this.boostType = boostTypes[Math.floor(Math.random() * boostTypes.length)];
-                this.color = this.getColorForBoostType(this.boostType);
+                this.color = getColorForBoostType(this.boostType); // Use global helper
                 this.radius = 15;
             } else {
                 this.color = 'yellow';
                 this.radius = 8;
-            }
-        }
-
-        getColorForBoostType(boostType) {
-            switch(boostType) {
-                case 'speed': return 'cyan';
-                case 'shield': return 'blue';
-                case 'weapon': return 'orange';
-                case 'burst_fire': return 'magenta';
-                case 'health': return 'pink';
-                case 'missile_spray': return 'purple';
-                case 'allies': return 'lightgreen'; // Color for allies pickup
-                default: return 'gray';
             }
         }
 
@@ -1066,7 +1100,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     life: this.lifeSpan
                 });
             }
-            if (audioContextResumed) explosionNoise.triggerAttackRelease("0.5");
         }
 
         update() {
@@ -1120,186 +1153,193 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Game Loop ---
     function gameLoop() {
-        if (gameState !== 'playing') {
+        try {
+            if (gameState !== 'playing') {
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw starfield background (galaxy environment)
+            for (const star of stars) {
+                ctx.beginPath();
+                let starX = (star.x - camera.x * 0.5) % canvas.width;
+                if (starX < 0) starX += canvas.width;
+                let starY = (star.y - camera.y * 0.5) % canvas.height;
+                if (starY < 0) starY += canvas.height;
+
+                ctx.arc(starX, starY, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = star.color;
+                ctx.fill();
+            }
+
+            // Update entities
+            player.update();
+            enemies.forEach(enemy => enemy.update());
+            projectiles.forEach(projectile => projectile.update());
+            allies.forEach(ally => ally.update()); // Update allies
+            explosions.forEach(explosion => explosion.update());
+
+
+            // Collision Detection
+
+            // Player Projectile vs Enemy
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'player') {
+                    let hitEnemy = false;
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        if (proj.checkCollision(enemy)) {
+                            hitEnemy = true;
+                            if (enemy.takeDamage(proj.damage)) {
+                                enemies.splice(j, 1);
+                                spawnEnemy();
+                                score += 10;
+                            }
+                            break;
+                        }
+                    }
+                    if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Enemy Projectile vs Player
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    if (proj.checkCollision(player)) {
+                        player.takeDamage(proj.damage);
+                        projectiles.splice(i, 1);
+                    } else if (proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Enemy Projectile vs Ally
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    let hitAlly = false;
+                    for (let j = allies.length - 1; j >= 0; j--) {
+                        const ally = allies[j];
+                        if (proj.checkCollision(ally)) {
+                            hitAlly = true;
+                            // Allies can be destroyed
+                            explosions.push(new Explosion(ally.x, ally.y, ally.color));
+                            allies.splice(j, 1);
+                            break;
+                        }
+                    }
+                    if (hitAlly) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Ally Projectile vs Enemy
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'ally') {
+                    let hitEnemy = false;
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        if (proj.checkCollision(enemy)) {
+                            hitEnemy = true;
+                            if (enemy.takeDamage(proj.damage)) {
+                                enemies.splice(j, 1);
+                                spawnEnemy();
+                                score += 10;
+                            }
+                            break;
+                        }
+                    }
+                    if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+
+            // Enemy Projectile vs Enemy (Friendly Fire)
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    let hitOtherEnemy = false;
+                    for (let k = enemies.length - 1; k >= 0; k--) {
+                        const otherEnemy = enemies[k];
+                        if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) {
+                            hitOtherEnemy = true;
+                            if (otherEnemy.takeDamage(proj.damage)) {
+                                enemies.splice(k, 1);
+                                spawnEnemy();
+                                score += 10;
+                            }
+                            break;
+                        }
+                    }
+                    if (hitOtherEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+
+            // Player vs Pickups
+            for (let i = pickups.length - 1; i >= 0; i--) {
+                const pickup = pickups[i];
+                if (player.checkCollision(pickup)) {
+                    if (pickup.type === 'resource') {
+                        player.gainScrap(Math.floor(Math.random() * 5) + 1);
+                        spawnPickup('resource');
+                    } else if (pickup.type === 'temp_boost') {
+                        applyTemporaryBoost(pickup.boostType, pickup.color); // Pass pickup color for flashing
+                        const randomNewPickupType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
+                        spawnPickup(randomNewPickupType);
+                    }
+                    pickups.splice(i, 1);
+                }
+            }
+
+            // Player vs Enemy (body collision)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (player.checkCollision(enemy)) {
+                    const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                    player.x += Math.cos(angle) * 10;
+                    player.y += Math.sin(angle) * 10;
+                    player.takeDamage(enemy.damage / 2);
+                }
+            }
+
+            // Remove dead allies (if they have a lifespan)
+            allies = allies.filter(ally => performance.now() - ally.spawnTime < ally.lifespan);
+
+            // Draw entities
+            pickups.forEach(pickup => pickup.draw());
+            enemies.forEach(enemy => enemy.draw());
+            projectiles.forEach(projectile => projectile.draw());
+            allies.forEach(ally => ally.draw()); // Draw allies
+            explosions.forEach(explosion => explosion.draw());
+            player.draw();
+
+            // Remove finished explosions
+            explosions = explosions.filter(explosion => !explosion.isFinished());
+
+            drawMiniMap(); // Draw the mini-map
+
+            updateUI();
+        } catch (error) {
+            console.error("Game Loop Error:", error);
+            showMessage("Game Error", "An unexpected error occurred. Please check the console for details.");
             cancelAnimationFrame(animationFrameId);
-            return;
+            gameState = 'game_over'; // Force game over state
         }
-
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw starfield background (galaxy environment)
-        for (const star of stars) {
-            ctx.beginPath();
-            let starX = (star.x - camera.x * 0.5) % canvas.width;
-            if (starX < 0) starX += canvas.width;
-            let starY = (star.y - camera.y * 0.5) % canvas.height;
-            if (starY < 0) starY += canvas.height;
-
-            ctx.arc(starX, starY, star.radius, 0, Math.PI * 2);
-            ctx.fillStyle = star.color;
-            ctx.fill();
-        }
-
-        // Update entities
-        player.update();
-        enemies.forEach(enemy => enemy.update());
-        projectiles.forEach(projectile => projectile.update());
-        allies.forEach(ally => ally.update()); // Update allies
-        explosions.forEach(explosion => explosion.update());
-
-
-        // Collision Detection
-
-        // Player Projectile vs Enemy
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i];
-            if (proj.owner === 'player') {
-                let hitEnemy = false;
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    const enemy = enemies[j];
-                    if (proj.checkCollision(enemy)) {
-                        hitEnemy = true;
-                        if (enemy.takeDamage(proj.damage)) {
-                            enemies.splice(j, 1);
-                            spawnEnemy();
-                            score += 10;
-                        }
-                        break;
-                    }
-                }
-                if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-        // Enemy Projectile vs Player
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i];
-            if (proj.owner === 'enemy') {
-                if (proj.checkCollision(player)) {
-                    player.takeDamage(proj.damage);
-                    projectiles.splice(i, 1);
-                } else if (proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-        // Enemy Projectile vs Ally
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i];
-            if (proj.owner === 'enemy') {
-                let hitAlly = false;
-                for (let j = allies.length - 1; j >= 0; j--) {
-                    const ally = allies[j];
-                    if (proj.checkCollision(ally)) {
-                        hitAlly = true;
-                        // Allies can be destroyed
-                        explosions.push(new Explosion(ally.x, ally.y, ally.color));
-                        allies.splice(j, 1);
-                        break;
-                    }
-                }
-                if (hitAlly) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-        // Ally Projectile vs Enemy
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i];
-            if (proj.owner === 'ally') {
-                let hitEnemy = false;
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    const enemy = enemies[j];
-                    if (proj.checkCollision(enemy)) {
-                        hitEnemy = true;
-                        if (enemy.takeDamage(proj.damage)) {
-                            enemies.splice(j, 1);
-                            spawnEnemy();
-                            score += 10;
-                        }
-                        break;
-                    }
-                }
-                if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-
-        // Enemy Projectile vs Enemy (Friendly Fire)
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i];
-            if (proj.owner === 'enemy') {
-                let hitOtherEnemy = false;
-                for (let k = enemies.length - 1; k >= 0; k--) {
-                    const otherEnemy = enemies[k];
-                    if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) {
-                        hitOtherEnemy = true;
-                        if (otherEnemy.takeDamage(proj.damage)) {
-                            enemies.splice(k, 1);
-                            spawnEnemy();
-                            score += 10;
-                        }
-                        break;
-                    }
-                }
-                if (hitOtherEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-
-        // Player vs Pickups
-        for (let i = pickups.length - 1; i >= 0; i--) {
-            const pickup = pickups[i];
-            if (player.checkCollision(pickup)) {
-                if (pickup.type === 'resource') {
-                    player.gainScrap(Math.floor(Math.random() * 5) + 1);
-                    spawnPickup('resource');
-                } else if (pickup.type === 'temp_boost') {
-                    applyTemporaryBoost(pickup.boostType);
-                    const randomNewPickupType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
-                    spawnPickup(randomNewPickupType);
-                }
-                pickups.splice(i, 1);
-            }
-        }
-
-        // Player vs Enemy (body collision)
-        for (let i = enemies.length - 1; i >= 0; i--) {
-            const enemy = enemies[i];
-            if (player.checkCollision(enemy)) {
-                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-                player.x += Math.cos(angle) * 10;
-                player.y += Math.sin(angle) * 10;
-                player.takeDamage(enemy.damage / 2);
-            }
-        }
-
-        // Remove dead allies (if they have a lifespan)
-        allies = allies.filter(ally => performance.now() - ally.spawnTime < ally.lifespan);
-
-        // Draw entities
-        pickups.forEach(pickup => pickup.draw());
-        enemies.forEach(enemy => enemy.draw());
-        projectiles.forEach(projectile => projectile.draw());
-        allies.forEach(ally => ally.draw()); // Draw allies
-        explosions.forEach(explosion => explosion.draw());
-        player.draw();
-
-        // Remove finished explosions
-        explosions = explosions.filter(explosion => !explosion.isFinished());
-
-        drawMiniMap(); // Draw the mini-map
-
-        updateUI();
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
@@ -1361,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Power-up / Boost Functions ---
-    function applyTemporaryBoost(boostType) {
+    function applyTemporaryBoost(boostType, flashColor) { // Added flashColor parameter
         // Reset all relevant boost states before applying a new one,
         // unless it's a health boost which is instant and doesn't conflict with timed boosts.
         if (boostType === 'health_boost' || activeEnhancement.type !== boostType) {
@@ -1434,6 +1474,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
 
+        // Apply flash effect to player
+        player.isFlashing = true;
+        player.flashEndTime = performance.now() + 750; // Flash for 0.75 seconds
+        player.flashColor = flashColor; // Use passed color for flash
+
         // Set a timeout to remove the boost (if it's a timed one)
         if (boostType !== 'health_boost' && boostType !== 'allies') { // Health and Allies are handled by their own timers/logic
             activeEnhancement.timeoutId = setTimeout(() => {
@@ -1494,14 +1539,11 @@ document.addEventListener('DOMContentLoaded', () => {
         finalScoreText.innerText = `Your score: ${score}`;
         gameOverModal.style.display = 'flex';
 
-        // Mini-map and stats panel remain visible as per user request
-        // joystickContainer is not in HTML, so no need to manage its display here.
-
         captureScreenshotForShare();
     }
 
     // --- Social Media Sharing ---
-    let screenshotDataUrl = '';
+    let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
 
     function captureScreenshotForShare() {
         const uiElements = document.querySelectorAll('#action-button, #activeEnhancementDisplay');
@@ -1556,7 +1598,6 @@ document.addEventListener('DOMContentLoaded', () => {
             link.href = screenshotDataUrl;
             link.download = `antibot_score_${score}.png`;
             document.body.appendChild(link);
-            link.click();
             document.body.removeChild(link);
         }
     });
@@ -1578,4 +1619,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 </body>
-</html>
