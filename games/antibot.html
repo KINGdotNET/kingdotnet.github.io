@@ -412,10 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scoreEl = document.getElementById('score-info');
     const levelInfoEl = document.getElementById('level-info');
+    const hpInfoEl = document.getElementById('hp-info'); // Get HP info element
     const hpBarEl = document.getElementById('hp-bar'); // Re-added hpBarEl
-    // Removed direct references to elements no longer in HTML
-    // const xpBarEl = document.getElementById('xp-bar');
-    // const scrapInfoEl = document.getElementById('scrap-info');
     // We still need to find these elements to hide them even if they exist in the HTML (but aren't used for displaying values)
     const hpBarContainer = document.getElementById('hp-bar-container');
     const xpBarContainer = document.getElementById('xp-bar-container');
@@ -454,10 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerAngle = 0; // Player's direction based on mouse position
 
     // Player Stats (fixed as RPG menu is removed)
-    let playerBaseSpeed = 5;
-    let playerBaseMaxHealth = 100;
+    let playerBaseSpeed = 8;
+    let playerBaseMaxHealth = 1000;
     let playerBaseDamage = 10;
-    let playerFireRate = 200; // ms between shots
+    let playerFireRate = 500; // ms between shots
     let playerProjectileSpeed = 10;
     let playerProjectileRadius = 8; // Increased for better visibility
 
@@ -582,8 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statsPanel.style.display = 'flex';
         miniMapContainer.style.display = 'block';
 
-        // Hide HP, XP, and Scrap displays
-        // Re-enabled HP bar display (removed 'display: none' from style section)
+        // Show HP bar, hide XP and Scrap displays
         if (hpBarContainer) hpBarContainer.style.display = 'block';
         if (xpBarContainer) xpBarContainer.style.display = 'none';
         if (scrapInfoEl) scrapInfoEl.style.display = 'none';
@@ -613,7 +610,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         scoreEl.textContent = `Score: ${score}`;
         levelInfoEl.textContent = `Level: ${playerLevel}`;
-        // Update HP bar width
+        // Update HP text and bar width
+        if (hpInfoEl) hpInfoEl.textContent = `HP: ${Math.max(0, Math.floor(player.health))}/${player.maxHealth}`; // Display HP
         if (hpBarEl) hpBarEl.style.width = `${(player.health / player.maxHealth) * 100}%`;
         // Removed updates for XP, Scrap bar widths and text content
         // xpBarEl.style.width = `${(playerXP / playerXPToNextLevel) * 100}%`;
@@ -1619,3 +1617,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 </body>
+</html>
