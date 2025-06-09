@@ -45,7 +45,6 @@
             background: rgba(0, 0, 0, 0.5);
             padding: 10px 15px;
             border-radius: 8px;
-            font-size: 1.1em;
             color: #00f0ff; /* Cyan */
             text-shadow: 0 0 5px rgba(0, 240, 255, 0.7);
             border: 1px solid rgba(0, 240, 255, 0.3);
@@ -60,11 +59,14 @@
             top: 20px;
             left: 20px;
             gap: 5px;
+            /* Reduced font size for the entire panel content */
+            font-size: 0.9em; /* Smaller font size */
+            padding: 8px 12px; /* Slightly reduced padding */
         }
 
-        /* Re-added HP info elements for cleaner UI */
+        /* Reduced font size for individual info elements */
         #score-info, #level-info, #hp-info {
-            font-size: 1.1em;
+            font-size: 1em; /* Relative to parent .ui-panel's font-size */
             color: #e0e6ed;
             font-family: 'Press Start 2P', cursive;
             text-shadow: none;
@@ -76,13 +78,13 @@
 
         /* HP Bar Styling - still needed internally by player object, but not shown on UI */
         #hp-bar-container {
-            width: 100px;
-            height: 10px;
+            width: 80px; /* Reduced width */
+            height: 8px; /* Reduced height */
             background-color: #555;
-            border-radius: 5px;
+            border-radius: 4px; /* Adjusted border-radius */
             overflow: hidden;
-            margin-top: 5px;
-            display: block; /* Ensure it's displayed */
+            margin-top: 3px; /* Adjusted margin */
+            display: block;
         }
         #hp-bar {
             height: 100%;
@@ -374,6 +376,33 @@
 
 <script>
     let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
+    let audioContextStartedByUser = false; // Flag to track if audio context has been resumed by user gesture
+    let explosionSoundCounter = 0; // To provide unique scheduling times for explosion sounds
+
+    // --- GLOBAL AUDIO CONTEXT RESUME LISTENER ---
+    // This is the most robust way to ensure AudioContext starts.
+    // It will attempt to start Tone.js on ANY user interaction with the page.
+    function resumeAudioContext() {
+        if (!audioContextStartedByUser && Tone.context.state !== 'running') {
+            Tone.start().then(() => {
+                audioContextStartedByUser = true;
+                console.log("AudioContext successfully resumed by user gesture.");
+                // Remove the event listeners after success to prevent unnecessary calls
+                document.documentElement.removeEventListener('click', resumeAudioContext);
+                document.documentElement.removeEventListener('touchstart', resumeAudioContext);
+            }).catch(e => {
+                console.warn("Failed to resume AudioContext (global listener):", e);
+                // Even if it fails, we set the flag to avoid spamming the console/user
+                // However, we won't set audioContextStartedByUser to true here,
+                // so subsequent clicks can retry. This is a subtle but important change.
+                // If it fails, the sounds will simply not play.
+            });
+        }
+    }
+    // Listen for click and touchstart on the entire document to catch the first user gesture
+    document.documentElement.addEventListener('click', resumeAudioContext);
+    document.documentElement.addEventListener('touchstart', resumeAudioContext);
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
@@ -480,8 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
         envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.3 }
     }).toDestination();
 
-    // Ensure audio context is resumed on first user interaction
-    let audioContextResumed = false;
 
     // Helper to get color for boost type (moved to global scope)
     function getColorForBoostType(boostType) {
@@ -496,7 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
             default: return 'gray';
         }
     }
-
 
     // --- Game Setup ---
     function resizeCanvas() {
@@ -519,17 +545,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function initGame() {
-        // We will now attempt to resume audio context right before the first sound is played.
-        // This function sets up the game state. Audio start will be handled in shoot()
-        // or other sound-playing functions after a user gesture.
-        
+        // AudioContext is now handled by the global resumeAudioContext listener.
+        // It's crucial for the first audio to play on any user gesture.
+
         resizeCanvas();
-        // Adjust mini-map canvas dimensions to match the new container size (120px - 2*5px padding = 110px)
         miniMapCanvas.width = 110;
         miniMapCanvas.height = 110;
 
         generateStars();
         player = new Player(worldSize.width / 2, worldSize.height / 2, 20, '#00f0ff');
+        player.health = player.maxHealth; // Ensure player health is reset to full on game start/restart
+        console.log(`Player health initialized to: ${player.health}`); // Debugging health
+
         enemies = [];
         projectiles = [];
         pickups = [];
@@ -557,13 +584,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (xpBarContainer) xpBarContainer.style.display = 'none';
         if (scrapInfoEl) scrapInfoEl.style.display = 'none';
 
-
         // Spawn initial entities: a mix of resources and random power-ups
         for (let i = 0; i < 25; i++) {
             const randomType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
             spawnPickup(randomType);
         }
-        for (let i = 0; i < 15; i++) { spawnEnemy(); }
+        // Spawn initial enemies, ensuring they are not too close to the player
+        for (let i = 0; i < 15; i++) { spawnEnemy(); } 
 
         // Start continuous enemy spawning
         if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
@@ -658,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
             super(x, y, radius, color);
             this.baseHealth = playerBaseMaxHealth;
             this.maxHealth = this.baseHealth;
-            this.health = this.maxHealth;
+            this.health = this.maxHealth; // Initialize health here too
             this.baseSpeed = playerBaseSpeed;
             this.speed = this.baseSpeed;
             this.baseDamage = playerBaseDamage;
@@ -667,8 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.shieldActive = false;
             this.currentShieldHP = 0;
             this.burstFireActive = false;
-            this.burstShotCount = 0;
-            this.burstIntervalId = null; // Will store the interval ID for burst fire
+            this.burstIntervalId = null; // Using a standard setInterval ID
             this.isFlashing = false; // New property for flashing effect
             this.flashEndTime = 0; // New property for flashing effect duration
             this.flashColor = 'white'; // Color for the flash effect
@@ -765,6 +791,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         takeDamage(damage) {
+            this.health -= damage;
+            console.log(`Player took ${damage} damage. Health: ${this.health}`); // Debugging health
             if (this.shieldActive && this.currentShieldHP > 0) {
                 const remainingDamage = damage - this.currentShieldHP;
                 this.currentShieldHP -= damage;
@@ -803,37 +831,28 @@ document.addEventListener('DOMContentLoaded', () => {
         shoot() {
             const currentTime = performance.now();
 
-            // Attempt to start AudioContext on first shot
-            if (!audioContextResumed) {
-                try {
-                    Tone.start();
-                    audioContextResumed = true;
-                    console.log("AudioContext resumed on first shot.");
-                } catch (e) {
-                    console.error("Failed to resume AudioContext on shot:", e);
-                    showMessage("Audio Issue", "Could not start game audio. Please click on the game window or allow audio playback in your browser.");
-                    // Don't proceed with sound if context not resumed
-                }
-            }
-
+            // Tone.js AudioContext should now be started by the global listener on first page interaction.
+            // No need to check audioContextStartedByUser here, simply play sounds if it is true.
 
             if (currentTime - this.lastShotTime > this.fireRate) {
                 if (playerBurstFire.active) {
-                    this.burstShotCount = 0;
-                    if (this.burstIntervalId) clearInterval(this.burstIntervalId);
+                    if (this.burstIntervalId) { // Clear any existing burst interval
+                        clearInterval(this.burstIntervalId);
+                    }
 
                     const totalMissiles = playerBurstFire.count;
-                    const sprayDelay = playerBurstFire.delay;
+                    const sprayDelay = playerBurstFire.delay; // This is in milliseconds
                     const spread = playerBurstFire.spreadAngle;
+                    let shotCounter = 0;
+                    
+                    // Store the starting time for the burst sequence
+                    const burstStartTime = Tone.context.currentTime; // Use Tone.context.currentTime for precise audio scheduling
 
-                    // Use Tone.js's built-in scheduler for burst fire
-                    // This is more robust against the "start time" error
-                    const startTime = Tone.now(); // Get initial Tone.js time
                     this.burstIntervalId = setInterval(() => {
-                        if (this.burstShotCount < totalMissiles) {
+                        if (shotCounter < totalMissiles) {
                             let missileAngle = playerAngle;
                             if (totalMissiles > 1 && spread > 0) {
-                                const offset = (this.burstShotCount - (totalMissiles - 1) / 2) * (spread / (totalMissiles - 1));
+                                const offset = (shotCounter - (totalMissiles - 1) / 2) * (spread / (totalMissiles - 1));
                                 missileAngle = playerAngle + offset;
                             }
 
@@ -841,12 +860,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             const bulletY = this.y + Math.sin(missileAngle) * (this.radius + playerProjectileRadius);
                             projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', missileAngle, playerProjectileSpeed, this.damage, 'player'));
                             
-                            // Schedule sound with an increment from the start time
-                            if (audioContextResumed) {
-                                playerMissileSynth.triggerAttackRelease("C4", "16n", startTime + (this.burstShotCount * (sprayDelay / 1000)));
+                            if (audioContextStartedByUser) { // Use the `audioContextStartedByUser` flag
+                                // Schedule sound with a guaranteed increment
+                                const scheduleTime = burstStartTime + (shotCounter * (sprayDelay / 1000));
+                                playerMissileSynth.triggerAttackRelease("C4", "16n", scheduleTime);
                             }
-                            this.burstShotCount++;
+                            shotCounter++;
                         } else {
+                            // Stop the interval once all shots are fired
                             clearInterval(this.burstIntervalId);
                             this.burstIntervalId = null;
                         }
@@ -856,8 +877,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
                     const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
                     projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
-                    // Schedule sound using Tone.now() directly for single shot
-                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now());
+                    // Schedule sound using Tone.now() directly for single shot (this is fine for single infrequent shots)
+                    if (audioContextStartedByUser) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now());
                 }
                 this.lastShotTime = currentTime;
             }
@@ -899,15 +920,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this));
             // Ensure audio context is resumed before playing sound
-            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now());
+            if (audioContextStartedByUser) enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now());
         }
 
         takeDamage(damage) {
             this.health -= damage;
+            console.log(`Enemy took ${damage} damage. Enemy health: ${this.health}`); // Debugging enemy health
             if (this.health <= 0) {
                 // Add explosion when enemy is destroyed
                 explosions.push(new Explosion(this.x, this.y, this.color));
-                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+                if (audioContextStartedByUser) {
+                    // Schedule explosion sound with a very small, increasing offset
+                    // This is the CRITICAL fix for "Start time must be strictly greater"
+                    explosionNoise.triggerAttackRelease("8n", Tone.now() + (explosionSoundCounter * 0.001)); // Add 1ms offset per explosion
+                    explosionSoundCounter++; // Increment counter
+                    // Reset counter periodically to prevent it from getting too large, though unlikely to be an issue
+                    if (explosionSoundCounter > 100) explosionSoundCounter = 0; 
+                }
 
                 player.gainXP(this.xpValue);
                 player.gainScrap(this.scrapValue);
@@ -1131,8 +1160,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Spawning Functions ---
     function spawnEnemy() {
         const radius = 25;
-        const x = Math.random() * worldSize.width;
-        const y = Math.random() * worldSize.height;
+        // Spawn enemies away from the player's initial position
+        let x, y;
+        const spawnDistance = 500; // Minimum distance from player to prevent immediate collision
+        do {
+            x = Math.random() * worldSize.width;
+            y = Math.random() * worldSize.height;
+        } while (player && Math.hypot(x - player.x, y - player.y) < spawnDistance);
+
         const types = ['drone', 'robot'];
         const type = types[Math.floor(Math.random() * types.length)];
         let color = 'gray';
@@ -1194,10 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitEnemy = true;
                             if (enemy.takeDamage(proj.damage)) {
                                 enemies.splice(j, 1);
-                                // Explosion when enemy is destroyed
-                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.color));
-                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
-
+                                // Explosion when enemy is destroyed - sound handled inside takeDamage
                                 spawnEnemy(); // Replace destroyed enemy
                                 score += 10;
                             }
@@ -1233,9 +1265,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const ally = allies[j];
                         if (proj.checkCollision(ally)) {
                             hitAlly = true;
-                            // Allies can be destroyed
+                            // Allies can be destroyed - sound handled inside takeDamage
                             explosions.push(new Explosion(ally.x, ally.y, ally.color));
-                            if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+                            if (audioContextStartedByUser) { // Manual sound trigger for ally destruction
+                                explosionNoise.triggerAttackRelease("8n", Tone.now() + (explosionSoundCounter * 0.001));
+                                explosionSoundCounter++;
+                                if (explosionSoundCounter > 100) explosionSoundCounter = 0;
+                            }
                             allies.splice(j, 1);
                             break;
                         }
@@ -1257,8 +1293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitEnemy = true;
                             if (enemy.takeDamage(proj.damage)) {
                                 enemies.splice(j, 1);
-                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.color));
-                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+                                // Explosion when enemy is destroyed - sound handled inside takeDamage
                                 spawnEnemy();
                                 score += 10;
                             }
@@ -1284,8 +1319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitOtherEnemy = true;
                             if (otherEnemy.takeDamage(proj.damage)) {
                                 enemies.splice(k, 1);
-                                explosions.push(new Explosion(otherEnemy.x, otherEnemy.y, otherEnemy.color));
-                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+                                // Explosion when enemy is destroyed - sound handled inside takeDamage
                                 spawnEnemy();
                                 score += 10;
                             }
@@ -1345,7 +1379,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
         } catch (error) {
             console.error("Game Loop Error:", error);
-            showMessage("Game Error", "An unexpected error occurred. Please check the console for details.");
+            // Changed message to indicate it's an internal error
+            showMessage("Game Crash!", "An internal game error occurred and the game has stopped. Please restart. Check console for details.");
             cancelAnimationFrame(animationFrameId);
             gameState = 'game_over'; // Force game over state
         }
@@ -1422,7 +1457,10 @@ document.addEventListener('DOMContentLoaded', () => {
             playerBurstFire.count = 1;
             playerBurstFire.delay = 0;
             playerBurstFire.spreadAngle = 0;
-            if (player.burstIntervalId) clearInterval(player.burstIntervalId); // Clear any active burst interval
+            if (player.burstIntervalId) { // Clear any active burst interval
+                clearInterval(player.burstIntervalId);
+                player.burstIntervalId = null; // Clear reference
+            }
             player.shieldActive = false;
             player.currentShieldHP = 0;
             activeEnhancement.type = null;
@@ -1498,7 +1536,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 playerBurstFire.count = 1;
                 playerBurstFire.delay = 0;
                 playerBurstFire.spreadAngle = 0;
-                if (player.burstIntervalId) clearInterval(player.burstIntervalId);
+                if (player.burstIntervalId) { // Clear any active burst interval
+                    clearInterval(player.burstIntervalId);
+                    player.burstIntervalId = null;
+                }
                 player.shieldActive = false;
                 player.currentShieldHP = 0;
                 activeEnhancement.type = null;
@@ -1538,13 +1579,12 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
         if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
-        if (player.burstIntervalId) clearInterval(player.burstIntervalId);
-
-        // Stop all ally intervals
-        allies.forEach(ally => {
-            // Check if ally has a burstIntervalId before trying to clear it
-            if (ally.burstIntervalId) clearInterval(ally.burstIntervalId);
-        });
+        
+        // Stop any active burst interval
+        if (player.burstIntervalId) {
+            clearInterval(player.burstIntervalId);
+            player.burstIntervalId = null;
+        }
 
         finalScoreText.innerText = `Your score: ${score}`;
         gameOverModal.style.display = 'flex';
