@@ -8,9 +8,7 @@
     <style>
         /* Import Google Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        /* Note: 'https://fonts.com/css2?family=Inter:wght@400;700&display=swap' was corrected to use fonts.googleapis.com */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
 
         /* Body and Game Container Styling */
         body {
@@ -132,8 +130,8 @@
         #miniMapContainer {
             top: 20px;
             right: 20px;
-            width: 180px; /* Adjust size as needed */
-            height: 180px;
+            width: 120px; /* Reduced size to 60% of original 180px */
+            height: 120px; /* Reduced size to 60% of original 180px */
             padding: 5px; /* Add some padding around the canvas */
             background: rgba(0, 0, 0, 0.6); /* Darker background for map */
             border: 1px solid rgba(0, 240, 255, 0.5);
@@ -309,33 +307,25 @@
         }
 
     </style>
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Tone.js for sound effects -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
 
-        <!-- In-game UI -->
         <div id="stats-panel" class="ui-panel">
             <p id="score-info">Score: 0</p>
             <p id="level-info">Level: 1</p>
             <div id="hp-info">HP: <div id="hp-bar-container"><div id="hp-bar" style="width:100%;"></div></div></div>
-            <!-- Removed XP, Scrap info elements for cleaner UI -->
-            <!-- <div id="xp-info">XP: <div id="xp-bar-container"><div id="xp-bar" style="width:0%;"></div></div></div> -->
-            <!-- <p id="scrap-info">Scrap: 0</p> -->
-        </div>
+            </div>
 
-        <!-- Mini-Map Container -->
         <div id="miniMapContainer" class="ui-panel">
             <canvas id="miniMapCanvas"></canvas>
         </div>
 
         <button id="action-button">
-            <span class="icon">🔥</span> <!-- Fire icon or similar -->
-        </button>
+            <span class="icon">🔥</span> </button>
 
         <div id="activeEnhancementDisplay" class="active-enhancement-display">
             Active: <span id="activeEnhancementType">None</span> (<span id="activeEnhancementTime">0s</span>)
@@ -343,9 +333,6 @@
 
     </div>
 
-    <!-- Modals -->
-
-    <!-- Start Modal -->
     <div id="startModal" class="modal">
         <div class="modal-content">
             <h2>ANTIBOT</h2>
@@ -356,7 +343,6 @@
         </div>
     </div>
 
-    <!-- Game Over Modal -->
     <div id="gameOverModal" class="modal">
         <div class="modal-content">
             <h2>GAME OVER</h2>
@@ -375,7 +361,6 @@
         </div>
     </div>
 
-    <!-- Custom Message Modal (replaces alert()) -->
     <div id="messageModal" class="modal">
         <div class="modal-content">
             <button class="close-button" id="closeMessageModalBtn">&times;</button>
@@ -388,9 +373,6 @@
     </div>
 
 <script>
-    // Moved screenshotDataUrl to global scope and changed to 'var' for explicit mutability
-    // This is a workaround for a specific environment issue where 'let' might be treated as 'const'.
-    // Changing to 'let' directly in the global scope if 'var' doesn't resolve it might also work.
     let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -500,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ensure audio context is resumed on first user interaction
     let audioContextResumed = false;
-    // Moved Tone.start() call to initGame for user gesture.
 
     // Helper to get color for boost type (moved to global scope)
     function getColorForBoostType(boostType) {
@@ -537,24 +518,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function initGame() { // Made initGame async
-        // Resume AudioContext on first user interaction
-        try {
-            if (!audioContextResumed) {
-                await Tone.start();
-                audioContextResumed = true;
-                console.log("AudioContext resumed on game start.");
-            }
-        } catch (e) {
-            console.error("Failed to resume AudioContext:", e);
-            showMessage("Audio Error", "Could not start audio. Please allow audio playback in your browser.");
-            audioContextResumed = false;
-        }
-
-
+    async function initGame() {
+        // We will now attempt to resume audio context right before the first sound is played.
+        // This function sets up the game state. Audio start will be handled in shoot()
+        // or other sound-playing functions after a user gesture.
+        
         resizeCanvas();
-        miniMapCanvas.width = 170;
-        miniMapCanvas.height = 170;
+        // Adjust mini-map canvas dimensions to match the new container size (120px - 2*5px padding = 110px)
+        miniMapCanvas.width = 110;
+        miniMapCanvas.height = 110;
 
         generateStars();
         player = new Player(worldSize.width / 2, worldSize.height / 2, 20, '#00f0ff');
@@ -606,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateUI() {
-        if (!player) return;
+        if (!player) return; // Ensure player object exists before trying to update UI
 
         scoreEl.textContent = `Score: ${score}`;
         levelInfoEl.textContent = `Level: ${playerLevel}`;
@@ -696,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.currentShieldHP = 0;
             this.burstFireActive = false;
             this.burstShotCount = 0;
-            this.burstIntervalId = null;
+            this.burstIntervalId = null; // Will store the interval ID for burst fire
             this.isFlashing = false; // New property for flashing effect
             this.flashEndTime = 0; // New property for flashing effect duration
             this.flashColor = 'white'; // Color for the flash effect
@@ -830,6 +802,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         shoot() {
             const currentTime = performance.now();
+
+            // Attempt to start AudioContext on first shot
+            if (!audioContextResumed) {
+                try {
+                    Tone.start();
+                    audioContextResumed = true;
+                    console.log("AudioContext resumed on first shot.");
+                } catch (e) {
+                    console.error("Failed to resume AudioContext on shot:", e);
+                    showMessage("Audio Issue", "Could not start game audio. Please click on the game window or allow audio playback in your browser.");
+                    // Don't proceed with sound if context not resumed
+                }
+            }
+
+
             if (currentTime - this.lastShotTime > this.fireRate) {
                 if (playerBurstFire.active) {
                     this.burstShotCount = 0;
@@ -839,6 +826,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const sprayDelay = playerBurstFire.delay;
                     const spread = playerBurstFire.spreadAngle;
 
+                    // Use Tone.js's built-in scheduler for burst fire
+                    // This is more robust against the "start time" error
+                    const startTime = Tone.now(); // Get initial Tone.js time
                     this.burstIntervalId = setInterval(() => {
                         if (this.burstShotCount < totalMissiles) {
                             let missileAngle = playerAngle;
@@ -850,7 +840,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             const bulletX = this.x + Math.cos(missileAngle) * (this.radius + playerProjectileRadius);
                             const bulletY = this.y + Math.sin(missileAngle) * (this.radius + playerProjectileRadius);
                             projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', missileAngle, playerProjectileSpeed, this.damage, 'player'));
-                            if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now()); // Pass Tone.now()
+                            
+                            // Schedule sound with an increment from the start time
+                            if (audioContextResumed) {
+                                playerMissileSynth.triggerAttackRelease("C4", "16n", startTime + (this.burstShotCount * (sprayDelay / 1000)));
+                            }
                             this.burstShotCount++;
                         } else {
                             clearInterval(this.burstIntervalId);
@@ -862,7 +856,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
                     const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
                     projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
-                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now()); // Pass Tone.now()
+                    // Schedule sound using Tone.now() directly for single shot
+                    if (audioContextResumed) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now());
                 }
                 this.lastShotTime = currentTime;
             }
@@ -903,13 +898,17 @@ document.addEventListener('DOMContentLoaded', () => {
         attack() {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this));
-            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now()); // Pass Tone.now()
+            // Ensure audio context is resumed before playing sound
+            if (audioContextResumed) enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now());
         }
 
         takeDamage(damage) {
             this.health -= damage;
             if (this.health <= 0) {
+                // Add explosion when enemy is destroyed
                 explosions.push(new Explosion(this.x, this.y, this.color));
+                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+
                 player.gainXP(this.xpValue);
                 player.gainScrap(this.scrapValue);
                 return true;
@@ -1083,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.particles = [];
             this.color = color;
             this.numParticles = 20 + Math.floor(Math.random() * 10);
-            this.lifeSpan = 60;
+            this.lifeSpan = 60; // Frames
 
             for (let i = 0; i < this.numParticles; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -1106,7 +1105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p.y += p.vy;
                 p.life--;
                 p.alpha = p.life / this.lifeSpan;
-                p.radius *= 0.95;
+                p.radius *= 0.95; // Particles shrink
             });
             this.particles = this.particles.filter(p => p.life > 0 && p.radius > 0.5);
         }
@@ -1163,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Draw starfield background (galaxy environment)
             for (const star of stars) {
                 ctx.beginPath();
+                // Parallax effect: stars move slower than the camera
                 let starX = (star.x - camera.x * 0.5) % canvas.width;
                 if (starX < 0) starX += canvas.width;
                 let starY = (star.y - camera.y * 0.5) % canvas.height;
@@ -1194,12 +1194,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitEnemy = true;
                             if (enemy.takeDamage(proj.damage)) {
                                 enemies.splice(j, 1);
-                                spawnEnemy();
+                                // Explosion when enemy is destroyed
+                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.color));
+                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
+
+                                spawnEnemy(); // Replace destroyed enemy
                                 score += 10;
                             }
-                            break;
+                            break; // Only hit one enemy per projectile
                         }
                     }
+                    // Remove projectile if it hit an enemy or went off-world
                     if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
                         projectiles.splice(i, 1);
                     }
@@ -1230,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitAlly = true;
                             // Allies can be destroyed
                             explosions.push(new Explosion(ally.x, ally.y, ally.color));
+                            if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
                             allies.splice(j, 1);
                             break;
                         }
@@ -1251,6 +1257,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             hitEnemy = true;
                             if (enemy.takeDamage(proj.damage)) {
                                 enemies.splice(j, 1);
+                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.color));
+                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
                                 spawnEnemy();
                                 score += 10;
                             }
@@ -1264,17 +1272,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
 
-            // Enemy Projectile vs Enemy (Friendly Fire)
+            // Enemy Projectile vs Enemy (Friendly Fire) - This could be complex, ensure `proj.originator` logic is sound
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const proj = projectiles[i];
                 if (proj.owner === 'enemy') {
                     let hitOtherEnemy = false;
                     for (let k = enemies.length - 1; k >= 0; k--) {
                         const otherEnemy = enemies[k];
+                        // Ensure projectile does not hit its own originator and it actually collides
                         if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) {
                             hitOtherEnemy = true;
                             if (otherEnemy.takeDamage(proj.damage)) {
                                 enemies.splice(k, 1);
+                                explosions.push(new Explosion(otherEnemy.x, otherEnemy.y, otherEnemy.color));
+                                if (audioContextResumed) explosionNoise.triggerAttackRelease("8n", Tone.now());
                                 spawnEnemy();
                                 score += 10;
                             }
@@ -1411,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playerBurstFire.count = 1;
             playerBurstFire.delay = 0;
             playerBurstFire.spreadAngle = 0;
-            if (player.burstIntervalId) clearInterval(player.burstIntervalId);
+            if (player.burstIntervalId) clearInterval(player.burstIntervalId); // Clear any active burst interval
             player.shieldActive = false;
             player.currentShieldHP = 0;
             activeEnhancement.type = null;
@@ -1497,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`${boostType} ended.`);
             }, 10000); // 10 seconds duration for timed boosts
         } else if (boostType === 'health_boost') { // For health, clear display after 2 seconds
-             activeEnhancement.timeoutId = setTimeout(() => {
+            activeEnhancement.timeoutId = setTimeout(() => {
                 activeEnhancement.type = null;
                 activeEnhancement.endTime = 0;
                 activeEnhancementDisplay.style.display = 'none';
@@ -1506,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
         } else if (boostType === 'allies') {
             // Allies are self-managing their lifespan, but the display for 'allies' boost should clear.
-             activeEnhancement.timeoutId = setTimeout(() => {
+            activeEnhancement.timeoutId = setTimeout(() => {
                 activeEnhancement.type = null;
                 activeEnhancement.endTime = 0;
                 activeEnhancementDisplay.style.display = 'none';
@@ -1531,7 +1542,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Stop all ally intervals
         allies.forEach(ally => {
-            if (ally.burstIntervalId) clearInterval(ally.burstIntervalId); // If allies ever get burst fire
+            // Check if ally has a burstIntervalId before trying to clear it
+            if (ally.burstIntervalId) clearInterval(ally.burstIntervalId);
         });
 
         finalScoreText.innerText = `Your score: ${score}`;
@@ -1541,38 +1553,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Social Media Sharing ---
-    let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
-
     function captureScreenshotForShare() {
-        const uiElements = document.querySelectorAll('#action-button, #activeEnhancementDisplay');
-        uiElements.forEach(el => el.style.visibility = 'hidden');
+        // Temporarily hide UI elements that shouldn't be in the screenshot
+        const uiElementsToHide = document.querySelectorAll('#action-button, #activeEnhancementDisplay, #stats-panel, #miniMapContainer');
+        uiElementsToHide.forEach(el => el.style.visibility = 'hidden');
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (const star of stars) {
-            ctx.beginPath();
-            const starX = (star.x - camera.x * 0.5) % canvas.width;
-            if (starX < 0) starX += canvas.width;
-            const starY = (star.y - camera.y * 0.5) % canvas.height;
-            if (starY < 0) starY += canvas.height;
-            ctx.arc(starX, starY, star.radius, 0, Math.PI * 2);
-            ctx.fillStyle = star.color;
-            ctx.fill();
-        }
-
-        pickups.forEach(pickup => pickup.draw());
-        enemies.forEach(enemy => enemy.draw());
-        projectiles.forEach(projectile => projectile.draw());
-        allies.forEach(ally => ally.draw()); // Draw allies for screenshot
-        player.draw();
-
-        try {
-            screenshotDataUrl = canvas.toDataURL('image/png');
-        } catch (error) {
-            console.error("Error capturing screenshot:", error);
-            screenshotDataUrl = '';
-        } finally {
-            uiElements.forEach(el => el.style.visibility = 'visible');
-        }
+        // Allow a brief moment for the browser to render the hidden elements
+        setTimeout(() => {
+            try {
+                // Ensure the canvas is up-to-date with the last game frame
+                // This will capture the current state of the main canvas
+                screenshotDataUrl = canvas.toDataURL('image/png');
+            } catch (error) {
+                console.error("Error capturing screenshot:", error);
+                showMessage("Screenshot Error", "Could not capture screenshot for sharing. Please try again or check browser console.");
+            } finally {
+                // Restore visibility of UI elements
+                uiElementsToHide.forEach(el => el.style.visibility = 'visible');
+            }
+        }, 50); // Small delay to ensure rendering updates after hiding UI
     }
 
     twitterShareBtn.addEventListener('click', () => {
@@ -1596,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             link.href = screenshotDataUrl;
             link.download = `antibot_score_${score}.png`;
             document.body.appendChild(link);
+            link.click(); // Programmatically click the link to trigger download
             document.body.removeChild(link);
         }
     });
