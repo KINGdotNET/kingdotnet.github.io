@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ANTIBOT - RPG Mobile Game</title>
+    <link rel="icon" type="image/x-icon" href="https://placehold.co/32x32/000/fff?text=AB">
+    <style>
+        /* Import Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        /* Body and Game Container Styling */
+        body {
+            margin: 0;
+            background-color: #0d1a26; /* Dark blue-grey */
+            color: #e0e6ed; /* Light grey */
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none; /* Prevents scrolling and other default touch actions */
+            font-size: 16px;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Hide anything outside */
+        }
+
+        /* Canvas Styling - Background will be drawn by JS */
+        canvas {
+            display: block;
+            border-radius: 10px;
+            cursor: crosshair; /* Indicate mouse control */
+        }
+
+        /* UI Panel Styling (Stats, etc.) */
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: #00f0ff; /* Cyan */
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.7);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            pointer-events: none; /* Allows clicks to pass through to canvas if needed */
+            z-index: 100; /* Ensure UI is above game elements but below modals */
+            display: flex; /* Always visible for stats panel */
+            flex-direction: column; /* For stats panel content */
+        }
+
+        #stats-panel {
+            top: 20px;
+            left: 20px;
+            gap: 5px;
+            /* Reduced font size for the entire panel content */
+            font-size: 0.9em; /* Smaller font size */
+            padding: 8px 12px; /* Slightly reduced padding */
+        }
+
+        /* Reduced font size for individual info elements */
+        #score-info, #level-info, #hp-info {
+            font-size: 1em; /* Relative to parent .ui-panel's font-size */
+            color: #e0e6ed;
+            font-family: 'Press Start 2P', cursive;
+            text-shadow: none;
+            border: none;
+            box-shadow: none;
+            background: none;
+            padding: 0;
+        }
+
+        /* HP Bar Styling - still needed internally by player object, but not shown on UI */
+        #hp-bar-container {
+            width: 80px; /* Reduced width */
+            height: 8px; /* Reduced height */
+            background-color: #555;
+            border-radius: 4px; /* Adjusted border-radius */
+            overflow: hidden;
+            margin-top: 3px; /* Adjusted margin */
+            display: block;
+        }
+        #hp-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #ff4757; /* Red */
+            transition: width 0.2s ease-out;
+        }
+        #xp-bar-container {
+            display: none; /* Hide XP bar container */
+        }
+
+        /* Action Button (for firing) */
+        #action-button {
+            position: absolute;
+            bottom: 30px;
+            right: 30px; /* Position action button closer to corner */
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ff4757, #e63946); /* Red gradient */
+            color: white;
+            border: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            touch-action: manipulation; /* For better mobile responsiveness */
+        }
+        #action-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(255, 71, 87, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+
+        #action-button span.icon {
+            font-size: 2.5em; /* Larger icon for attack */
+            display: block;
+            line-height: 1; /* Remove extra space */
+        }
+
+        /* Mini-Map Styling */
+        #miniMapContainer {
+            top: 20px;
+            right: 20px;
+            width: 120px; /* Reduced size to 60% of original 180px */
+            height: 120px; /* Reduced size to 60% of original 180px */
+            padding: 5px; /* Add some padding around the canvas */
+            background: rgba(0, 0, 0, 0.6); /* Darker background for map */
+            border: 1px solid rgba(0, 240, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+            pointer-events: auto; /* Allow interaction if needed, though map itself won't be interactive */
+            z-index: 100; /* Ensure it's on top of game elements */
+            display: block; /* Always visible */
+        }
+        #miniMapCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(20, 40, 60, 0.8); /* Darker blue space for map */
+            border-radius: 5px;
+        }
+
+
+        /* Modal Base Styling */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1001; /* Above game elements and UI panels */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            color: #e0e6ed;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Modal Content Styling */
+        .modal-content {
+            background-color: #223344; /* Darker blue-grey */
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #00f0ff; /* Cyan border */
+            max-width: 90%; /* Responsive width */
+            width: 500px; /* Max width for desktop */
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            animation: fadeInScale 0.3s ease-out forwards;
+            position: relative;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-content h2 {
+            font-size: 2.5em;
+            color: #00f0ff;
+            margin-bottom: 20px;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .modal-buttons {
+            margin-top: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* Modal Button Styling */
+        .modal-button, .close-button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(145deg, #2ed573, #28a745); /* Green gradient */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(46, 213, 115, 0.3);
+            transition: all 0.2s ease;
+        }
+        .modal-button:hover, .close-button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(46, 213, 115, 0.4);
+        }
+        .modal-button.red {
+            background: linear-gradient(145deg, #ff4757, #e63946);
+            box-shadow: 0 44px 10px rgba(255, 71, 87, 0.3);
+        }
+        .modal-button.blue {
+            background: linear-gradient(145deg, #0097e6, #00a8ff);
+            box-shadow: 0 44px 10px rgba(0, 150, 255, 0.3);
+        }
+
+        /* Close Button Styling */
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            color: #e0e6ed;
+            font-size: 1.5em;
+            padding: 5px 10px;
+            border-radius: 5px;
+            line-height: 1;
+            box-shadow: none;
+        }
+        .close-button:hover {
+            color: #ff4757;
+            transform: none;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        /* Game Over Modal Specific Styling */
+        #gameOverModal .modal-content {
+            background-color: #2a3a4c; /* Slightly different dark blue */
+        }
+        #gameOverModal h2 {
+            color: #ff4757; /* Red for game over */
+        }
+        #finalScoreText {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #00f0ff;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Social Share Buttons */
+        #socialShareButtons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        #socialShareButtons button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        #socialShareButtons button:hover {
+            opacity: 0.8;
+        }
+
+        /* Media Queries for Mobile Responsiveness of Modals */
+        @media (max-width: 600px) {
+            .modal-content {
+                padding: 15px; /* Smaller padding */
+                border-radius: 10px; /* Less rounded corners */
+                width: 95%; /* More fluid width */
+                font-size: 0.9em; /* Smaller base font size for modal content */
+            }
+
+            .modal-content h2 {
+                font-size: 1.8em; /* Smaller heading */
+                margin-bottom: 15px;
+            }
+
+            .modal-buttons {
+                gap: 10px; /* Smaller gap between buttons */
+            }
+
+            .modal-button, .close-button {
+                padding: 10px 20px; /* Smaller button padding */
+                font-size: 1em; /* Smaller button font size */
+            }
+        }
+
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="stats-panel" class="ui-panel">
+            <p id="score-info">Score: 0</p>
+            <p id="level-info">Level: 1</p>
+            <div id="hp-info">HP: <div id="hp-bar-container"><div id="hp-bar" style="width:100%;"></div></div></div>
+            </div>
+
+        <div id="miniMapContainer" class="ui-panel">
+            <canvas id="miniMapCanvas"></canvas>
+        </div>
+
+        <button id="action-button">
+            <span class="icon">🔥</span> </button>
+
+        <div id="activeEnhancementDisplay" class="active-enhancement-display">
+            Active: <span id="activeEnhancementType">None</span> (<span id="activeEnhancementTime">0s</span>)
+        </div>
+
+    </div>
+
+    <div id="startModal" class="modal">
+        <div class="modal-content">
+            <h2>ANTIBOT</h2>
+            <p style="font-size: 1.2em; margin-bottom: 25px;">Destroy all enemy AI units!</p>
+            <div class="modal-buttons">
+                <button class="modal-button" id="startGameBtn">Start Game</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>GAME OVER</h2>
+            <p id="finalScoreText">Your score: 0</p>
+
+            <div id="socialShareButtons">
+                <button id="twitterShareBtn">Share on Twitter</button>
+                <button id="facebookShareBtn">Share on Facebook</button>
+                <button id="instagramShareBtn">Share on Instagram</button>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-button" id="restartGameBtn">Play Again</button>
+                <button class="modal-button red" onclick="window.open('https://king.net', '_blank')">Back to KING.NET</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="closeMessageModalBtn">&times;</button>
+            <h2 id="messageModalTitle"></h2>
+            <p id="messageModalText"></p>
+            <div class="modal-buttons">
+                <button class="modal-button" id="messageModalOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let screenshotDataUrl = ''; // Declared as let at the very top of the script scope.
+    let audioContextStartedByUser = false; // Flag to track if audio context has been resumed by user gesture
+    let explosionSoundCounter = 0; // To provide unique scheduling times for explosion sounds
+    let enemySoundCounter = 0; // NEW: To provide unique scheduling times for enemy attack sounds
+
+    // --- GLOBAL AUDIO CONTEXT RESUME LISTENER ---
+    // This is the most robust way to ensure AudioContext starts.
+    // It will attempt to start Tone.js on ANY user interaction with the page.
+    function resumeAudioContext() {
+        // Only try to start if the context isn't already running
+        if (Tone.context.state !== 'running') {
+            Tone.start().then(() => {
+                audioContextStartedByUser = true;
+                console.log("AudioContext successfully resumed by user gesture.");
+                // Remove the event listeners after success to prevent unnecessary calls
+                document.documentElement.removeEventListener('click', resumeAudioContext);
+                document.documentElement.removeEventListener('touchstart', resumeAudioContext);
+            }).catch(e => {
+                console.warn("Failed to resume AudioContext (global listener):", e);
+                // If it fails, the sounds will simply not play, but we don't spam the user.
+                // We keep audioContextStartedByUser as false so subsequent interactions can retry.
+            });
+        }
+    }
+    // Listen for click and touchstart on the entire document to catch the first user gesture
+    document.documentElement.addEventListener('click', resumeAudioContext);
+    document.documentElement.addEventListener('touchstart', resumeAudioContext);
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameContainer = document.getElementById('gameContainer');
+
+    // UI elements
+    const startModal = document.getElementById('startModal');
+    const gameOverModal = document.getElementById('gameOverModal');
+    const messageModal = document.getElementById('messageModal');
+    const messageModalTitle = document.getElementById('messageModalTitle');
+    const messageModalText = document.getElementById('messageModalText');
+    const messageModalOkBtn = document.getElementById('messageModalOkBtn');
+    const closeMessageModalBtn = document.getElementById('closeMessageModalBtn');
+
+    const startGameBtn = document.getElementById('startGameBtn');
+    const restartGameBtn = document.getElementById('restartGameBtn');
+
+    const scoreEl = document.getElementById('score-info');
+    const levelInfoEl = document.getElementById('level-info');
+    const hpInfoEl = document.getElementById('hp-info'); // Get HP info element
+    const hpBarEl = document.getElementById('hp-bar'); // Re-added hpBarEl
+    // We still need to find these elements to hide them even if they exist in the HTML (but aren't used for displaying values)
+    const hpBarContainer = document.getElementById('hp-bar-container');
+    const xpBarContainer = document.getElementById('xp-bar-container');
+    const scrapInfoEl = document.getElementById('scrap-info'); // Still need to get this to hide the element itself
+
+    const finalScoreText = document.getElementById('finalScoreText');
+
+    const actionButton = document.getElementById('action-button');
+
+    const miniMapCanvas = document.getElementById('miniMapCanvas');
+    const miniMapCtx = miniMapCanvas.getContext('2d');
+
+    const statsPanel = document.getElementById('stats-panel');
+    const miniMapContainer = document.getElementById('miniMapContainer');
+
+
+    const activeEnhancementDisplay = document.getElementById('activeEnhancementDisplay');
+    const activeEnhancementTypeEl = document.getElementById('activeEnhancementType');
+    const activeEnhancementTimeEl = document.getElementById('activeEnhancementTime');
+
+    // Social media buttons
+    const twitterShareBtn = document.getElementById('twitterShareBtn');
+    const facebookShareBtn = document.getElementById('facebookShareBtn');
+    const instagramShareBtn = document.getElementById('instagramShareBtn');
+
+    let animationFrameId = null;
+    let gameState = 'start'; // 'start', 'playing', 'game_over'
+    let player, enemies, projectiles, pickups, allies; // Added allies array
+    let worldSize = { width: 3000, height: 3000 };
+    let camera = { x: 0, y: 0 };
+    let score = 0;
+
+    // Mouse control variables
+    let mouseX = 0;
+    let mouseY = 0;
+    let playerAngle = 0; // Player's direction based on mouse position
+
+    // Player Stats (fixed as RPG menu is removed)
+    let playerBaseSpeed = 8;
+    let playerBaseMaxHealth = 1000;
+    let playerBaseDamage = 10;
+    let playerFireRate = 500; // ms between shots
+    let playerProjectileSpeed = 10;
+    let playerProjectileRadius = 8; // Increased for better visibility
+
+    let playerLevel = 1;
+    let playerXP = 0;
+    let playerXPToNextLevel = 100;
+    let playerScrap = 0;
+
+    // Active Enhancements (limited time)
+    let activeEnhancement = {
+        type: null,
+        endTime: 0,
+        timeoutId: null
+    };
+    let currentSpeedMultiplier = 1;
+    let currentShieldMultiplier = 1;
+    let currentDamageMultiplier = 1;
+    let playerBurstFire = { active: false, count: 1, delay: 0, spreadAngle: 0 }; // Added spreadAngle
+
+
+    // Starfield properties
+    const numStars = 200;
+    let stars = [];
+    let explosions = [];
+    let enemySpawnIntervalId;
+
+    // Tone.js audio setup (these are global, so defined once)
+    const playerMissileSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.2 }
+    }).toDestination();
+
+    const enemyMissileSynth = new Tone.Synth({
+        oscillator: { type: "square" },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.01, release: 0.1 }
+    }).toDestination();
+
+    const explosionNoise = new Tone.NoiseSynth({
+        noise: { type: "white" },
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.3 }
+    }).toDestination();
+
+
+    // Helper to get color for boost type (moved to global scope)
+    function getColorForBoostType(boostType) {
+        switch(boostType) {
+            case 'speed_boost': return 'cyan';
+            case 'shield_boost': return 'blue';
+            case 'weapon_boost': return 'orange';
+            case 'burst_fire_boost': return 'magenta';
+            case 'health_boost': return 'pink';
+            case 'missile_spray': return 'purple';
+            case 'allies': return 'lightgreen';
+            default: return 'gray';
+        }
+    }
+
+    // --- Game Setup ---
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Function to generate stars for the background
+    function generateStars() {
+        stars = [];
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: Math.random() * worldSize.width,
+                y: Math.random() * worldSize.height,
+                radius: Math.random() * 1.5 + 0.5,
+                color: `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`
+            });
+        }
+    }
+
+    async function initGame() {
+        // AudioContext is now handled by the global resumeAudioContext listener.
+        // It's crucial for the first audio to play on any user gesture.
+
+        resizeCanvas();
+        miniMapCanvas.width = 110;
+        miniMapCanvas.height = 110;
+
+        generateStars();
+        player = new Player(worldSize.width / 2, worldSize.height / 2, 20, '#00f0ff');
+        player.health = player.maxHealth; // Ensure player health is reset to full on game start/restart
+        console.log(`Player health initialized to: ${player.health}`); // Debugging health
+
+        enemies = [];
+        projectiles = [];
+        pickups = [];
+        allies = []; // Initialize allies array
+        explosions = [];
+        score = 0;
+        playerXP = 0;
+        playerXPToNextLevel = 100;
+        playerScrap = 0;
+
+        clearTimeout(activeEnhancement.timeoutId);
+        activeEnhancement = { type: null, endTime: 0, timeoutId: null };
+        currentSpeedMultiplier = 1;
+        currentShieldMultiplier = 1;
+        currentDamageMultiplier = 1;
+        playerBurstFire = { active: false, count: 1, delay: 0, spreadAngle: 0 };
+        activeEnhancementDisplay.style.display = 'none';
+
+        // Ensure UI elements are visible on game start/restart
+        statsPanel.style.display = 'flex';
+        miniMapContainer.style.display = 'block';
+
+        // Show HP bar, hide XP and Scrap displays
+        if (hpBarContainer) hpBarContainer.style.display = 'block';
+        if (xpBarContainer) xpBarContainer.style.display = 'none';
+        if (scrapInfoEl) scrapInfoEl.style.display = 'none';
+
+        // Spawn initial entities: a mix of resources and random power-ups
+        for (let i = 0; i < 25; i++) {
+            const randomType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
+            spawnPickup(randomType);
+        }
+        // Spawn initial enemies, ensuring they are not too close to the player
+        for (let i = 0; i < 15; i++) { spawnEnemy(); } 
+
+        // Start continuous enemy spawning
+        if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
+        enemySpawnIntervalId = setInterval(spawnEnemy, 1000); // Spawn an enemy every 1 second
+
+        updateUI();
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(gameLoop);
+        gameState = 'playing';
+        startModal.style.display = 'none';
+        gameOverModal.style.display = 'none';
+    }
+
+    function updateUI() {
+        if (!player) return; // Ensure player object exists before trying to update UI
+
+        scoreEl.textContent = `Score: ${score}`;
+        levelInfoEl.textContent = `Level: ${playerLevel}`;
+        // Update HP text and bar width
+        if (hpInfoEl) hpInfoEl.textContent = `HP: ${Math.max(0, Math.floor(player.health))}/${player.maxHealth}`; // Display HP
+        if (hpBarEl) hpBarEl.style.width = `${(player.health / player.maxHealth) * 100}%`;
+        // Removed updates for XP, Scrap bar widths and text content
+        // xpBarEl.style.width = `${(playerXP / playerXPToNextLevel) * 100}%`;
+        // scrapInfoEl.textContent = `Scrap: ${playerScrap}`;
+
+
+        // Active enhancement display
+        if (activeEnhancement.type) {
+            activeEnhancementDisplay.style.display = 'block';
+            activeEnhancementTypeEl.textContent = activeEnhancement.type.replace('_', ' ').toUpperCase();
+            const timeLeft = Math.max(0, Math.ceil((activeEnhancement.endTime - performance.now()) / 1000));
+            activeEnhancementTimeEl.textContent = `${timeLeft}s`;
+        } else {
+            activeEnhancementDisplay.style.display = 'none';
+        }
+    }
+
+    // --- Mouse Controls ---
+    canvas.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // Prevent scrolling
+        const touch = e.touches[0];
+        mouseX = touch.clientX;
+        mouseY = touch.clientY;
+    }, { passive: false });
+
+    // Spacebar to fire
+    document.addEventListener('keydown', (e) => {
+        if (gameState === 'playing' && e.code === 'Space') {
+            if (player) { // Ensure player object exists
+                player.shoot();
+            }
+            e.preventDefault(); // Prevent default spacebar action (like scrolling)
+        }
+    });
+
+
+    // --- Game Objects ---
+    class Entity {
+        constructor(x, y, radius, color) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.color = color;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x - camera.x, this.y - camera.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        distanceTo(other) {
+            return Math.hypot(this.x - other.x, this.y - other.y);
+        }
+
+        checkCollision(other) {
+            return this.distanceTo(other) < (this.radius + other.radius);
+        }
+    }
+
+    class Player extends Entity {
+        constructor(x, y, radius, color) {
+            super(x, y, radius, color);
+            this.baseHealth = playerBaseMaxHealth;
+            this.maxHealth = this.baseHealth;
+            this.health = this.maxHealth; // Initialize health here too
+            this.baseSpeed = playerBaseSpeed;
+            this.speed = this.baseSpeed;
+            this.baseDamage = playerBaseDamage;
+            this.fireRate = playerFireRate;
+            this.lastShotTime = 0;
+            this.shieldActive = false;
+            this.currentShieldHP = 0;
+            this.burstFireActive = false;
+            this.burstIntervalId = null; // Using a standard setInterval ID
+            this.isFlashing = false; // New property for flashing effect
+            this.flashEndTime = 0; // New property for flashing effect duration
+            this.flashColor = 'white'; // Color for the flash effect
+        }
+
+        update() {
+            this.maxHealth = playerBaseMaxHealth;
+            this.health = Math.min(this.health, this.maxHealth);
+            this.speed = this.baseSpeed * currentSpeedMultiplier;
+            this.damage = playerBaseDamage * currentDamageMultiplier;
+            this.fireRate = playerFireRate;
+
+            // Calculate angle to mouse/touch position
+            const targetX = mouseX + camera.x;
+            const targetY = mouseY + camera.y;
+            playerAngle = Math.atan2(targetY - this.y, targetX - this.x);
+
+            // Move player towards the mouse/touch position
+            const distance = this.distanceTo({x: targetX, y: targetY});
+            if (distance > this.radius * 0.5) { // Only move if mouse is a certain distance away
+                this.x += Math.cos(playerAngle) * Math.min(this.speed, distance);
+                this.y += Math.sin(playerAngle) * Math.min(this.speed, distance);
+            }
+
+
+            this.x = Math.max(this.radius, Math.min(worldSize.width - this.radius, this.x));
+            this.y = Math.max(this.radius, Math.min(worldSize.height - this.radius, this.y));
+
+            camera.x = this.x - canvas.width / 2;
+            camera.y = this.y - canvas.height / 2;
+
+            // Update flashing state
+            if (this.isFlashing && performance.now() > this.flashEndTime) {
+                this.isFlashing = false;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x - camera.x, this.y - camera.y);
+            ctx.rotate(playerAngle + Math.PI / 2);
+
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius * 1.5);
+            ctx.lineTo(-this.radius, this.radius * 1.2);
+            ctx.lineTo(this.radius, this.radius * 1.2);
+            ctx.closePath();
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, -this.radius * 0.7, this.radius * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(100,200,255,0.8)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,240,255,0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.rect(-this.radius * 0.7, this.radius * 0.8, this.radius * 0.4, this.radius * 0.8);
+            ctx.rect(this.radius * 0.3, this.radius * 0.8, this.radius * 0.4, this.radius * 0.8);
+            ctx.fillStyle = 'gray';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+
+            if (this.shieldActive) {
+                const shieldColor = `rgba(0, 200, 255, ${this.currentShieldHP / (playerBaseMaxHealth * currentShieldMultiplier) * 0.5 + 0.2})`;
+                ctx.beginPath();
+                ctx.arc(this.x - camera.x, this.y - camera.y, this.radius + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = shieldColor;
+                ctx.lineWidth = 5;
+                ctx.stroke();
+            }
+            // Power-up flash effect
+            if (this.isFlashing) {
+                ctx.save();
+                ctx.translate(this.x - camera.x, this.y - camera.y);
+                const pulseScale = 1 + Math.sin(performance.now() * 0.02) * 0.1; // Pulsing effect
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * pulseScale * 1.2, 0, Math.PI * 2); // Larger pulsing arc
+                ctx.strokeStyle = this.flashColor;
+                ctx.lineWidth = 5;
+                ctx.globalAlpha = Math.abs(Math.sin(performance.now() * 0.015)); // Faster, more pronounced pulsing alpha
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        takeDamage(damage) {
+            this.health -= damage;
+            console.log(`Player took ${damage} damage. Health: ${this.health}`); // Debugging health
+            if (this.shieldActive && this.currentShieldHP > 0) {
+                const remainingDamage = damage - this.currentShieldHP;
+                this.currentShieldHP -= damage;
+                if (this.currentShieldHP <= 0) {
+                    this.shieldActive = false;
+                    clearTimeout(activeEnhancement.timeoutId);
+                    activeEnhancement = { type: null, endTime: 0, timeoutId: null };
+                    currentShieldMultiplier = 1;
+                }
+                if (remainingDamage > 0) {
+                    this.health -= remainingDamage;
+                }
+            } else {
+                this.health -= damage;
+            }
+            if (this.health <= 0) {
+                explosions.push(new Explosion(this.x, this.y, 'red'));
+                gameOver();
+            }
+        }
+
+        gainXP(amount) {
+            playerXP += amount;
+            while (playerXP >= playerXPToNextLevel) {
+                playerXP -= playerXPToNextLevel;
+                playerXPToNextLevel = Math.floor(playerXPToNextLevel * 1.5);
+                playerLevel++;
+                console.log(`Leveled up to Level ${playerLevel}!`);
+            }
+        }
+
+        gainScrap(amount) {
+            playerScrap += amount;
+        }
+
+        shoot() {
+            const currentTime = performance.now();
+
+            // Tone.js AudioContext should now be started by the global listener on first page interaction.
+            // No need for a fallback here, simply play sounds if audioContextStartedByUser is true.
+
+            if (currentTime - this.lastShotTime > this.fireRate) {
+                if (playerBurstFire.active) {
+                    if (this.burstIntervalId) { // Clear any existing burst interval
+                        clearInterval(this.burstIntervalId);
+                    }
+
+                    const totalMissiles = playerBurstFire.count;
+                    const sprayDelay = playerBurstFire.delay; // This is in milliseconds
+                    const spread = playerBurstFire.spreadAngle;
+                    let shotCounter = 0;
+                    
+                    // Store the starting time for the burst sequence
+                    const burstStartTime = Tone.context.currentTime; // Use Tone.context.currentTime for precise audio scheduling
+
+                    this.burstIntervalId = setInterval(() => {
+                        if (shotCounter < totalMissiles) {
+                            let missileAngle = playerAngle;
+                            if (totalMissiles > 1 && spread > 0) {
+                                const offset = (shotCounter - (totalMissiles - 1) / 2) * (spread / (totalMissiles - 1));
+                                missileAngle = playerAngle + offset;
+                            }
+
+                            const bulletX = this.x + Math.cos(missileAngle) * (this.radius + playerProjectileRadius);
+                            const bulletY = this.y + Math.sin(missileAngle) * (this.radius + playerProjectileRadius);
+                            projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', missileAngle, playerProjectileSpeed, this.damage, 'player'));
+                            
+                            if (audioContextStartedByUser) { // Use the `audioContextStartedByUser` flag
+                                // Schedule sound with a guaranteed increment
+                                const scheduleTime = burstStartTime + (shotCounter * (sprayDelay / 1000));
+                                playerMissileSynth.triggerAttackRelease("C4", "16n", scheduleTime);
+                            }
+                            shotCounter++;
+                        } else {
+                            // Stop the interval once all shots are fired
+                            clearInterval(this.burstIntervalId);
+                            this.burstIntervalId = null;
+                        }
+                    }, sprayDelay);
+
+                } else { // Regular single shot if no boost is active
+                    const bulletX = this.x + Math.cos(playerAngle) * (this.radius + playerProjectileRadius);
+                    const bulletY = this.y + Math.sin(playerAngle) * (this.radius + playerProjectileRadius);
+                    projectiles.push(new Projectile(bulletX, bulletY, playerProjectileRadius, 'white', playerAngle, playerProjectileSpeed, this.damage, 'player'));
+                    // Schedule sound using Tone.now() directly for single shot (this is fine for single infrequent shots)
+                    if (audioContextStartedByUser) playerMissileSynth.triggerAttackRelease("C4", "16n", Tone.now());
+                }
+                this.lastShotTime = currentTime;
+            }
+        }
+    }
+
+    class Enemy extends Entity {
+        constructor(x, y, radius, color, type) {
+            super(x, y, radius, color);
+            this.type = type;
+            this.speed = 1 + (playerLevel * 0.1);
+            this.health = 30 + (playerLevel * 10);
+            this.damage = 5 + (playerLevel * 2);
+            this.target = player;
+            this.fireRate = 500;
+            this.lastShotTime = 0;
+            this.xpValue = 20 + (playerLevel * 5);
+            this.scrapValue = 5 + (playerLevel * 1);
+            this.throbOffset = Math.random() * Math.PI * 2;
+        }
+
+        update() {
+            if (!this.target) return;
+
+            const angleToTarget = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            this.x += Math.cos(angleToTarget) * this.speed;
+            this.y += Math.sin(angleToTarget) * this.speed;
+
+            this.x = Math.max(0, Math.min(worldSize.width, this.x));
+            this.y = Math.max(0, Math.min(worldSize.height, this.y));
+
+            if (this.distanceTo(player) < 400 && performance.now() - this.lastShotTime > this.fireRate) {
+                this.attack();
+                this.lastShotTime = performance.now();
+            }
+        }
+
+        attack() {
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            projectiles.push(new Projectile(this.x, this.y, 8, 'red', angle, 7, this.damage, 'enemy', this));
+            // Ensure audio context is resumed before playing sound
+            if (audioContextStartedByUser) {
+                // Use enemySoundCounter to provide a unique scheduling time
+                enemyMissileSynth.triggerAttackRelease("G3", "16n", Tone.now() + (enemySoundCounter * 0.0001)); // Very small offset (0.1ms)
+                enemySoundCounter++;
+                if (enemySoundCounter > 100) enemySoundCounter = 0; // Reset to prevent excessively large numbers
+            }
+        }
+
+        takeDamage(damage) {
+            this.health -= damage;
+            console.log(`Enemy took ${damage} damage. Enemy health: ${this.health}`); // Debugging enemy health
+            if (this.health <= 0) {
+                // Add explosion when enemy is destroyed
+                explosions.push(new Explosion(this.x, this.y, this.color));
+                if (audioContextStartedByUser) {
+                    // Schedule explosion sound with a very small, increasing offset
+                    // This is the CRITICAL fix for "Start time must be strictly greater"
+                    explosionNoise.triggerAttackRelease("8n", Tone.now() + (explosionSoundCounter * 0.001)); // Add 1ms offset per explosion
+                    explosionSoundCounter++; // Increment counter
+                    // Reset counter periodically to prevent it from getting too large, though unlikely to be an issue
+                    if (explosionSoundCounter > 100) explosionSoundCounter = 0; 
+                }
+
+                player.gainXP(this.xpValue);
+                player.gainScrap(this.scrapValue);
+                return true;
+            }
+            return false;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x - camera.x, this.y - camera.y);
+            ctx.rotate(Math.atan2(this.target.y - this.y, this.target.x - this.x) + Math.PI / 2);
+
+            const throbScale = 1 + Math.sin(performance.now() * 0.005 + this.throbOffset) * 0.1;
+            ctx.scale(throbScale, throbScale);
+
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.radius * 1.2, this.radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, -this.radius * 0.4, this.radius * 0.7, 0, Math.PI, true);
+            ctx.fillStyle = 'rgba(100,200,255,0.7)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, this.radius * 0.5, this.radius * 0.8, 0, Math.PI, false);
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    // New Ally Class
+    class Ally extends Entity {
+        constructor(x, y, radius, color, lifespan) {
+            super(x, y, radius, color);
+            this.speed = playerBaseSpeed * 0.8; // Allies move slightly slower than player
+            this.damage = playerBaseDamage * 0.5; // Allies deal half player damage
+            this.fireRate = 700; // Allies fire every 0.7 seconds
+            this.lastShotTime = 0;
+            this.lifespan = lifespan; // In milliseconds
+            this.spawnTime = performance.now();
+        }
+
+        update() {
+            // Find the nearest enemy
+            let nearestEnemy = null;
+            let minDist = Infinity;
+            for (const enemy of enemies) {
+                const dist = this.distanceTo(enemy);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestEnemy = enemy;
+                }
+            }
+
+            if (nearestEnemy) {
+                // Move towards the nearest enemy
+                const angleToTarget = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+                this.x += Math.cos(angleToTarget) * this.speed;
+                this.y += Math.sin(angleToTarget) * this.speed;
+
+                // Attack enemy if in range and cooldown is ready
+                if (minDist < 300 && performance.now() - this.lastShotTime > this.fireRate) {
+                    this.attack(nearestEnemy);
+                    this.lastShotTime = performance.now();
+                }
+            } else {
+                // If no enemies, perhaps follow player or patrol
+                const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angleToPlayer) * this.speed * 0.5; // Follow player slowly
+                this.y += Math.sin(angleToPlayer) * this.speed * 0.5;
+            }
+        }
+
+        attack(targetEnemy) {
+            const angle = Math.atan2(targetEnemy.y - this.y, targetEnemy.x - this.x);
+            // Allied projectiles are green and hurt enemies (friendly fire to enemies)
+            projectiles.push(new Projectile(this.x, this.y, 6, 'lightgreen', angle, 9, this.damage, 'ally', this));
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x - camera.x, this.y - camera.y);
+            // Draw a small triangle or simple ship shape for allies
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius);
+            ctx.lineTo(-this.radius * 0.8, this.radius * 0.8);
+            ctx.lineTo(this.radius * 0.8, this.radius * 0.8);
+            ctx.closePath();
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    class Projectile extends Entity {
+        constructor(x, y, radius, color, angle, speed, damage, owner, originator = null) {
+            super(x, y, radius, color);
+            this.angle = angle;
+            this.speed = speed;
+            this.damage = damage;
+            this.owner = owner;
+            this.originator = originator;
+        }
+
+        update() {
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+        }
+    }
+
+    class Pickup extends Entity {
+        constructor(x, y, radius, type) {
+            super(x, y, radius, 'lime');
+            this.type = type;
+            if (type === 'temp_boost') {
+                const boostTypes = ['speed', 'shield', 'weapon', 'burst_fire', 'health', 'missile_spray', 'allies']; // Added allies boost
+                this.boostType = boostTypes[Math.floor(Math.random() * boostTypes.length)];
+                this.color = getColorForBoostType(this.boostType); // Use global helper
+                this.radius = 15;
+            } else {
+                this.color = 'yellow';
+                this.radius = 8;
+            }
+        }
+
+        draw() {
+            super.draw();
+            if (this.type === 'temp_boost') {
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let symbol = '';
+                switch(this.boostType) {
+                    case 'speed': symbol = '⚡'; break;
+                    case 'shield': symbol = '🛡️'; break;
+                    case 'weapon': symbol = '⚔️'; break;
+                    case 'burst_fire': symbol = '💥'; break;
+                    case 'health': symbol = '❤️'; break;
+                    case 'missile_spray': symbol = '🌀'; break;
+                    case 'allies': symbol = '🤖'; break; // Symbol for allies pickup
+                }
+                ctx.fillText(symbol, this.x - camera.x, this.y - camera.y);
+            } else {
+                ctx.fillStyle = 'black';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('S', this.x - camera.x, this.y - camera.y);
+            }
+        }
+    }
+
+    class Explosion {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.particles = [];
+            this.color = color;
+            this.numParticles = 20 + Math.floor(Math.random() * 10);
+            this.lifeSpan = 60; // Frames
+
+            for (let i = 0; i < this.numParticles; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 1;
+                this.particles.push({
+                    x: this.x,
+                    y: this.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    alpha: 1,
+                    life: this.lifeSpan
+                });
+            }
+        }
+
+        update() {
+            this.particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                p.alpha = p.life / this.lifeSpan;
+                p.radius *= 0.95; // Particles shrink
+            });
+            this.particles = this.particles.filter(p => p.life > 0 && p.radius > 0.5);
+        }
+
+        draw() {
+            this.particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x - camera.x, p.y - camera.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        isFinished() {
+            return this.particles.length === 0;
+        }
+    }
+
+
+    // --- Spawning Functions ---
+    function spawnEnemy() {
+        const radius = 25;
+        // Spawn enemies away from the player's initial position
+        let x, y;
+        const spawnDistance = 500; // Minimum distance from player to prevent immediate collision
+        do {
+            x = Math.random() * worldSize.width;
+            y = Math.random() * worldSize.height;
+        } while (player && Math.hypot(x - player.x, y - player.y) < spawnDistance);
+
+        const types = ['drone', 'robot'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        let color = 'gray';
+        if (type === 'robot') color = 'darkred';
+        enemies.push(new Enemy(x, y, radius, color, type));
+    }
+
+    function spawnPickup(type) {
+        const radius = type === 'temp_boost' ? 15 : 8;
+        const x = Math.random() * worldSize.width;
+        const y = Math.random() * worldSize.height;
+        pickups.push(new Pickup(x, y, radius, type));
+    }
+
+
+    // --- Game Loop ---
+    function gameLoop() {
+        try {
+            if (gameState !== 'playing') {
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw starfield background (galaxy environment)
+            for (const star of stars) {
+                ctx.beginPath();
+                // Parallax effect: stars move slower than the camera
+                let starX = (star.x - camera.x * 0.5) % canvas.width;
+                if (starX < 0) starX += canvas.width;
+                let starY = (star.y - camera.y * 0.5) % canvas.height;
+                if (starY < 0) starY += canvas.height;
+
+                ctx.arc(starX, starY, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = star.color;
+                ctx.fill();
+            }
+
+            // Update entities
+            player.update();
+            enemies.forEach(enemy => enemy.update());
+            projectiles.forEach(projectile => projectile.update());
+            allies.forEach(ally => ally.update()); // Update allies
+            explosions.forEach(explosion => explosion.update());
+
+
+            // Collision Detection
+
+            // Player Projectile vs Enemy
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'player') {
+                    let hitEnemy = false;
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        if (proj.checkCollision(enemy)) {
+                            hitEnemy = true;
+                            if (enemy.takeDamage(proj.damage)) {
+                                enemies.splice(j, 1);
+                                // Explosion sound is now handled inside enemy.takeDamage()
+                                spawnEnemy(); // Replace destroyed enemy
+                                score += 10;
+                            }
+                            break; // Only hit one enemy per projectile
+                        }
+                    }
+                    // Remove projectile if it hit an enemy or went off-world
+                    if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Enemy Projectile vs Player
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    if (proj.checkCollision(player)) {
+                        player.takeDamage(proj.damage);
+                        projectiles.splice(i, 1);
+                    } else if (proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Enemy Projectile vs Ally
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    let hitAlly = false;
+                    for (let j = allies.length - 1; j >= 0; j--) {
+                        const ally = allies[j];
+                        if (proj.checkCollision(ally)) {
+                            hitAlly = true;
+                            // Allies can be destroyed - explosion sound handled here
+                            explosions.push(new Explosion(ally.x, ally.y, ally.color));
+                            if (audioContextStartedByUser) { // Manual sound trigger for ally destruction
+                                explosionNoise.triggerAttackRelease("8n", Tone.now() + (explosionSoundCounter * 0.001));
+                                explosionSoundCounter++;
+                                if (explosionSoundCounter > 100) explosionSoundCounter = 0;
+                            }
+                            allies.splice(j, 1);
+                            break;
+                        }
+                    }
+                    if (hitAlly) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // Ally Projectile vs Enemy
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'ally') {
+                    let hitEnemy = false;
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        if (proj.checkCollision(enemy)) {
+                            hitEnemy = true;
+                            if (enemy.takeDamage(proj.damage)) {
+                                enemies.splice(j, 1);
+                                // Explosion sound is now handled inside enemy.takeDamage()
+                                spawnEnemy();
+                                score += 10;
+                            }
+                            break;
+                        }
+                    }
+                    if (hitEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+
+            // Enemy Projectile vs Enemy (Friendly Fire) - This could be complex, ensure `proj.originator` logic is sound
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                if (proj.owner === 'enemy') {
+                    let hitOtherEnemy = false;
+                    for (let k = enemies.length - 1; k >= 0; k--) {
+                        const otherEnemy = enemies[k];
+                        // Ensure projectile does not hit its own originator and it actually collides
+                        if (proj.checkCollision(otherEnemy) && otherEnemy !== proj.originator) {
+                            hitOtherEnemy = true;
+                            if (otherEnemy.takeDamage(proj.damage)) {
+                                enemies.splice(k, 1);
+                                // Explosion sound is now handled inside enemy.takeDamage()
+                                spawnEnemy();
+                                score += 10;
+                            }
+                            break;
+                        }
+                    }
+                    if (hitOtherEnemy || proj.x < 0 || proj.x > worldSize.width || proj.y < 0 || proj.y > worldSize.height) {
+                        projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+
+            // Player vs Pickups
+            for (let i = pickups.length - 1; i >= 0; i--) {
+                const pickup = pickups[i];
+                if (player.checkCollision(pickup)) {
+                    if (pickup.type === 'resource') {
+                        player.gainScrap(Math.floor(Math.random() * 5) + 1);
+                        spawnPickup('resource');
+                    } else if (pickup.type === 'temp_boost') {
+                        applyTemporaryBoost(pickup.boostType, pickup.color); // Pass pickup color for flashing
+                        const randomNewPickupType = Math.random() < 0.7 ? 'resource' : 'temp_boost';
+                        spawnPickup(randomNewPickupType);
+                    }
+                    pickups.splice(i, 1);
+                }
+            }
+
+            // Player vs Enemy (body collision)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (player.checkCollision(enemy)) {
+                    const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                    player.x += Math.cos(angle) * 10;
+                    player.y += Math.sin(angle) * 10;
+                    player.takeDamage(enemy.damage / 2);
+                }
+            }
+
+            // Remove dead allies (if they have a lifespan)
+            allies = allies.filter(ally => performance.now() - ally.spawnTime < ally.lifespan);
+
+            // Draw entities
+            pickups.forEach(pickup => pickup.draw());
+            enemies.forEach(enemy => enemy.draw());
+            projectiles.forEach(projectile => projectile.draw());
+            allies.forEach(ally => ally.draw()); // Draw allies
+            explosions.forEach(explosion => explosion.update()); // Update explosions (note: already updated above)
+            player.draw();
+
+            // Remove finished explosions
+            explosions = explosions.filter(explosion => !explosion.isFinished());
+            explosions.forEach(explosion => explosion.draw()); // Redraw explosions after filtering. Moved from above
+
+            drawMiniMap(); // Draw the mini-map
+
+            updateUI();
+        } catch (error) {
+            console.error("Game Loop Error:", error);
+            // Changed message to indicate it's an internal error
+            showMessage("Game Crash!", "An internal game error occurred and the game has stopped. Please restart. Check console for details.");
+            cancelAnimationFrame(animationFrameId);
+            gameState = 'game_over'; // Force game over state
+        }
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- Mini-Map Functions ---
+    function drawMiniMap() {
+        miniMapCtx.clearRect(0, 0, miniMapCanvas.width, miniMapCanvas.height);
+        miniMapCtx.fillStyle = 'rgba(20, 40, 60, 0.8)';
+        miniMapCtx.fillRect(0, 0, miniMapCanvas.width, miniMapCanvas.height);
+
+        const mapScale = miniMapCanvas.width / worldSize.width;
+
+        // Draw player on mini-map
+        miniMapCtx.beginPath();
+        miniMapCtx.arc(player.x * mapScale, player.y * mapScale, player.radius * mapScale + 1, 0, Math.PI * 2);
+        miniMapCtx.fillStyle = player.color;
+        miniMapCtx.fill();
+        miniMapCtx.strokeStyle = 'white';
+        miniMapCtx.lineWidth = 1;
+        miniMapCtx.stroke();
+
+        // Draw enemies on mini-map
+        enemies.forEach(enemy => {
+            miniMapCtx.beginPath();
+            miniMapCtx.arc(enemy.x * mapScale, enemy.y * mapScale, enemy.radius * mapScale * 0.8, 0, Math.PI * 2);
+            miniMapCtx.fillStyle = enemy.color;
+            miniMapCtx.fill();
+        });
+
+        // Draw pickups on mini-map
+        pickups.forEach(pickup => {
+            miniMapCtx.beginPath();
+            miniMapCtx.arc(pickup.x * mapScale, pickup.y * mapScale, pickup.radius * mapScale * 0.6, 0, Math.PI * 2);
+            miniMapCtx.fillStyle = pickup.color;
+            miniMapCtx.fill();
+        });
+
+        // Draw allies on mini-map
+        allies.forEach(ally => {
+            miniMapCtx.beginPath();
+            miniMapCtx.arc(ally.x * mapScale, ally.y * mapScale, ally.radius * mapScale * 0.7, 0, Math.PI * 2);
+            miniMapCtx.fillStyle = ally.color;
+            miniMapCtx.fill();
+        });
+    }
+
+    // --- Message Modal Functions ---
+    function showMessage(title, text) {
+        messageModalTitle.textContent = title;
+        messageModalText.textContent = text;
+        messageModal.style.display = 'flex';
+    }
+
+    messageModalOkBtn.addEventListener('click', () => {
+        messageModal.style.display = 'none';
+    });
+    closeMessageModalBtn.addEventListener('click', () => {
+        messageModal.style.display = 'none';
+    });
+
+
+    // --- Power-up / Boost Functions ---
+    function applyTemporaryBoost(boostType, flashColor) { // Added flashColor parameter
+        // Reset all relevant boost states before applying a new one,
+        // unless it's a health boost which is instant and doesn't conflict with timed boosts.
+        if (boostType === 'health_boost' || activeEnhancement.type !== boostType) {
+            clearTimeout(activeEnhancement.timeoutId);
+            currentSpeedMultiplier = 1;
+            currentShieldMultiplier = 1;
+            currentDamageMultiplier = 1;
+            playerBurstFire.active = false;
+            playerBurstFire.count = 1;
+            playerBurstFire.delay = 0;
+            playerBurstFire.spreadAngle = 0;
+            if (player.burstIntervalId) { // Clear any active burst interval
+                clearInterval(player.burstIntervalId);
+                player.burstIntervalId = null; // Clear reference
+            }
+            player.shieldActive = false;
+            player.currentShieldHP = 0;
+            activeEnhancement.type = null;
+            activeEnhancement.endTime = 0;
+            activeEnhancementDisplay.style.display = 'none';
+        }
+
+        switch(boostType) {
+            case 'speed_boost':
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 10000;
+                currentSpeedMultiplier = 1.8;
+                break;
+            case 'shield_boost':
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 10000;
+                currentShieldMultiplier = 2;
+                player.shieldActive = true;
+                player.currentShieldHP = playerBaseMaxHealth * currentShieldMultiplier;
+                break;
+            case 'weapon_boost':
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 10000;
+                currentDamageMultiplier = 2.0;
+                break;
+            case 'burst_fire_boost':
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 10000;
+                playerBurstFire.active = true;
+                playerBurstFire.count = 10;
+                playerBurstFire.delay = 50;
+                playerBurstFire.spreadAngle = 0; // No spread for burst fire
+                break;
+            case 'missile_spray':
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 10000;
+                playerBurstFire.active = true;
+                playerBurstFire.count = 5;
+                playerBurstFire.delay = 80;
+                playerBurstFire.spreadAngle = Math.PI / 4;
+                break;
+            case 'health_boost':
+                player.health = Math.min(player.maxHealth, player.health + player.maxHealth * 0.5);
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 2000; // Display for 2 seconds
+                break;
+            case 'allies': // New allies boost
+                activeEnhancement.type = boostType;
+                activeEnhancement.endTime = performance.now() + 15000; // Allies last 15 seconds
+                const numAllies = Math.floor(Math.random() * 6) + 5; // 5 to 10 allies
+                for (let i = 0; i < numAllies; i++) {
+                    const spawnOffset = player.radius * 2 + Math.random() * 20;
+                    const spawnAngle = Math.random() * Math.PI * 2;
+                    const allyX = player.x + Math.cos(spawnAngle) * spawnOffset;
+                    const allyY = player.y + Math.sin(spawnAngle) * spawnOffset;
+                    allies.push(new Ally(allyX, allyY, 15, 'lightgreen', 15000)); // Radius 15, 15s lifespan
+                }
+                break;
+        }
+
+        // Apply flash effect to player
+        player.isFlashing = true;
+        player.flashEndTime = performance.now() + 750; // Flash for 0.75 seconds
+        player.flashColor = flashColor; // Use passed color for flash
+
+        // Set a timeout to remove the boost (if it's a timed one)
+        if (boostType !== 'health_boost' && boostType !== 'allies') { // Health and Allies are handled by their own timers/logic
+            activeEnhancement.timeoutId = setTimeout(() => {
+                currentSpeedMultiplier = 1;
+                currentShieldMultiplier = 1;
+                currentDamageMultiplier = 1;
+                playerBurstFire.active = false;
+                playerBurstFire.count = 1;
+                playerBurstFire.delay = 0;
+                playerBurstFire.spreadAngle = 0;
+                if (player.burstIntervalId) { // Clear any active burst interval
+                    clearInterval(player.burstIntervalId);
+                    player.burstIntervalId = null;
+                }
+                player.shieldActive = false;
+                player.currentShieldHP = 0;
+                activeEnhancement.type = null;
+                activeEnhancement.endTime = 0;
+                activeEnhancementDisplay.style.display = 'none';
+                updateUI();
+                console.log(`${boostType} ended.`);
+            }, 10000); // 10 seconds duration for timed boosts
+        } else if (boostType === 'health_boost') { // For health, clear display after 2 seconds
+            activeEnhancement.timeoutId = setTimeout(() => {
+                activeEnhancement.type = null;
+                activeEnhancement.endTime = 0;
+                activeEnhancementDisplay.style.display = 'none';
+                updateUI();
+                console.log(`${boostType} display ended.`);
+            }, 2000);
+        } else if (boostType === 'allies') {
+            // Allies are self-managing their lifespan, but the display for 'allies' boost should clear.
+            activeEnhancement.timeoutId = setTimeout(() => {
+                activeEnhancement.type = null;
+                activeEnhancement.endTime = 0;
+                activeEnhancementDisplay.style.display = 'none';
+                updateUI();
+                console.log(`${boostType} display ended.`);
+            }, 2000); // Display for 2 seconds, allies live longer
+        }
+
+        updateUI();
+        console.log(`Applied boost: ${boostType}`);
+    }
+
+
+    // --- Game Over ---
+    function gameOver() {
+        if (gameState === 'game_over') return;
+        gameState = 'game_over';
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+        if (enemySpawnIntervalId) clearInterval(enemySpawnIntervalId);
+        
+        // Stop any active burst interval
+        if (player.burstIntervalId) {
+            clearInterval(player.burstIntervalId);
+            player.burstIntervalId = null;
+        }
+
+        finalScoreText.innerText = `Your score: ${score}`;
+        gameOverModal.style.display = 'flex';
+
+        captureScreenshotForShare();
+    }
+
+    // --- Social Media Sharing ---
+    function captureScreenshotForShare() {
+        // Temporarily hide UI elements that shouldn't be in the screenshot
+        const uiElementsToHide = document.querySelectorAll('#action-button, #activeEnhancementDisplay, #stats-panel, #miniMapContainer');
+        uiElementsToHide.forEach(el => el.style.visibility = 'hidden');
+
+        // Allow a brief moment for the browser to render the hidden elements
+        setTimeout(() => {
+            try {
+                // Ensure the canvas is up-to-date with the last game frame
+                // This will capture the current state of the main canvas
+                screenshotDataUrl = canvas.toDataURL('image/png');
+            } catch (error) {
+                console.error("Error capturing screenshot:", error);
+                showMessage("Screenshot Error", "Could not capture screenshot for sharing. Please try again or check browser console.");
+            } finally {
+                // Restore visibility of UI elements
+                uiElementsToHide.forEach(el => el.style.visibility = 'visible');
+            }
+        }, 50); // Small delay to ensure rendering updates after hiding UI
+    }
+
+    twitterShareBtn.addEventListener('click', () => {
+        const text = encodeURIComponent(`I destroyed ${score} AI units in ANTIBOT! Can you beat my score? #ANTIBOT #MobileGame #RPG`);
+        const url = encodeURIComponent(window.location.href);
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+        window.open(twitterUrl, '_blank');
+    });
+
+    facebookShareBtn.addEventListener('click', () => {
+        const quote = encodeURIComponent(`I scored ${score} in ANTIBOT!`);
+        const href = encodeURIComponent(window.location.href);
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?quote=${quote}&href=${href}`;
+        window.open(facebookUrl, '_blank');
+    });
+
+    instagramShareBtn.addEventListener('click', () => {
+        showMessage("Sharing Info", 'Instagram sharing from a web page is complex and usually requires server-side integration or users to manually upload. Please save the screenshot and share it manually!');
+        if (screenshotDataUrl) {
+            const link = document.createElement('a');
+            link.href = screenshotDataUrl;
+            link.download = `antibot_score_${score}.png`;
+            document.body.appendChild(link);
+            link.click(); // Programmatically click the link to trigger download
+            document.body.removeChild(link);
+        }
+    });
+
+
+    // --- Event Listeners ---
+    startGameBtn.addEventListener('click', initGame);
+    restartGameBtn.addEventListener('click', initGame);
+
+    actionButton.addEventListener('click', () => {
+        if (gameState === 'playing' && player) {
+            player.shoot();
+        }
+    });
+
+    // Initial state setup: show the start modal
+    startModal.style.display = 'flex';
+});
+</script>
+
+</body>
+</html>
