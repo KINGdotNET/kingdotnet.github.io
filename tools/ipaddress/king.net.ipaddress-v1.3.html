@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Address Checker | KING.NET</title>
+    <link rel="icon" type="image/x-icon" href="https://king.net/games/images/favicon-icons8-shield.png">
+    <link rel="stylesheet" href="ipaddress_style.css"> <style>
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  background-color: #f4f4f4;
+  color: #333;
+}
+
+#ipInput {
+    padding: 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+
+#resultsDiv {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    white-space: pre-line;
+}
+
+#resultsDiv p{
+    color:red
+}
+   </style>
+
+</head>
+<body>
+    <div class="container">
+        <h1><a href="https://king.net"><b>KING.NET</b></a> | IP Address Checker</h1>
+   <input type="text" id="ipInput" placeholder="Enter IP Address">
+    <button id="checkButton">Check</button>
+    <div id="resultsDiv"></div>
+    <div>Open Source by <a href="https://king.net"><b>KING.NET</b></a> | ver 1.3. Released 20250609.</div>
+    </div>
+
+<script>
+function checkIPAddress(ipAddress) {
+  const results = {
+    isValid: false,
+    type: "unknown",
+    version: null, // Added to distinguish IPv4/IPv6
+    isPrivate: false,
+    isLoopback: false,
+    isMulticast: false,
+    hostname: "Not Available",
+    error: null,
+    city: 'Not Available',
+    region: 'Not Available',
+    country: 'Not Available',
+    org: 'Not Available',
+  };
+
+  // IPv4 Validation and Analysis
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (ipv4Regex.test(ipAddress)) {
+    const parts = ipAddress.split(".").map(Number);
+    if (parts.every((part) => part >= 0 && part <= 255)) {
+      results.isValid = true;
+      results.version = "IPv4";
+
+      // IP Type Detection (IPv4)
+      if (parts[0] === 127) {
+        results.isLoopback = true;
+        results.type = "loopback";
+      } else if (
+        parts[0] === 10 ||
+        (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+        (parts[0] === 192 && parts[1] === 168)
+      ) {
+        results.isPrivate = true;
+        results.type = "private";
+      } else if (parts[0] >= 224 && parts[0] <= 239) {
+        results.isMulticast = true;
+        results.type = "multicast";
+      } else {
+        results.type = "public";
+      }
+
+      // Fetch data from ip-api.com
+      return fetch(`http://ip-api.com/json/${ipAddress}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.status === 'success') {
+               results.hostname = data.query;
+               results.city = data.city;
+               results.region = data.regionName;
+               results.country = data.country;
+               results.org = data.org;
+          }
+          return results;
+        })
+        .catch(error => {
+          results.error = `API Error: ${error.message}`;
+          return results;
+        });
+
+    } else {
+        results.error = "Invalid IPv4 number range";
+        return Promise.resolve(results);
+    }
+  }
+
+  // IPv6 Validation and Analysis
+  // This regex is a simplified one. For a more exhaustive one, consider libraries
+  // or a more complex regex that handles various IPv6 shorthand notations.
+  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,7}:([0-9a-fA-F]{1,4}){1,7}$|^::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}$|^[0-9a-fA-F]{1,4}::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^([0-9a-fA-F]{1,4}:){1}(:[0-9a-fA-F]{1,4}){1,6}$|^::[0-9a-fA-F]{1,4}$/;
+
+  if (ipv6Regex.test(ipAddress)) {
+    results.isValid = true;
+    results.version = "IPv6";
+
+    // IPv6 Type Detection
+    if (ipAddress === "::1") {
+      results.isLoopback = true;
+      results.type = "loopback";
+    } else if (ipAddress.startsWith("fc00:") || ipAddress.startsWith("fd00:")) {
+      // Unique Local Addresses (ULA) - fc00::/7
+      results.isPrivate = true;
+      results.type = "private";
+    } else if (ipAddress.startsWith("ff00:")) {
+      // Multicast Addresses - ff00::/8
+      results.isMulticast = true;
+      results.type = "multicast";
+    } else {
+      results.type = "public";
+    }
+
+    // Fetch data from ip-api.com for IPv6 as well
+    return fetch(`http://ip-api.com/json/${ipAddress}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.status === 'success') {
+             results.hostname = data.query;
+             results.city = data.city;
+             results.region = data.regionName;
+             results.country = data.country;
+             results.org = data.org;
+        }
+        return results;
+      })
+      .catch(error => {
+        results.error = `API Error: ${error.message}`;
+        return results;
+      });
+  }
+
+  results.error = "Invalid IP address format";
+  return Promise.resolve(results);
+}
+
+
+// Example Usage (assuming you have an HTML input element with ID "ipInput"
+//             and a div element with ID "resultsDiv" to display the results)
+const ipInput = document.getElementById("ipInput");
+const resultsDiv = document.getElementById("resultsDiv");
+
+if(ipInput && resultsDiv){
+    document.getElementById("checkButton").addEventListener("click", () => {
+    const ip = ipInput.value.trim();
+
+        checkIPAddress(ip).then(results => {
+        if (results.isValid) {
+            let message = `IP: ${ip}<br>`;
+            message += `Version: ${results.version}<br>`; // Display IP version
+            message += `Type: ${results.type}<br>`;
+            if(results.isPrivate){
+                 message += "Private Address<br>"
+            }
+            if(results.isLoopback){
+                message += "Loopback Address<br>"
+            }
+            if (results.isMulticast){
+                message += "Multicast Address <br>"
+            }
+            message += `Hostname: ${results.hostname}<br>`;
+            message += `City: ${results.city}<br>`;
+            message += `Region: ${results.region}<br>`;
+            message += `Country: ${results.country}<br>`;
+            message += `Organization: ${results.org}<br><br>`;
+            message += `Check with: <a href="https://www.abuseipdb.com/check/${results.hostname}" target="_blank">AbuseIPDB.com</a> | <a href="https://scamalytics.com/ip/${results.hostname}" target="_blank">Scamalytics.com/</a> <br><br>`;
+
+            message += `Analyze the Traffic for the last: <a href="https://ncc-1701.splunkcloudfed.com/en-US/app/NCO_Akamai/search?q=search%20${results.hostname}%20%7C%20fields%20_time%20dest%20geo.city%20geo.country%20http_method%20status%20uri_path%20uri_query%20message&display.page.search.mode=smart&dispatch.sample_ratio=1&earliest=-12h%40h&latest=now" target="_blank">12 hours</a> | <a href="https://ncc-1701.splunkcloudfed.com/en-US/app/NCO_Akamai/search?q=search%20${results.hostname}%20%7C%20fields%20_time%20dest%20geo.city%20geo.country%20http_method%20status%20uri_path%20uri_query%20message&display.page.search.mode=smart&dispatch.sample_ratio=1&earliest=-24h%40h&latest=now" target="_blank">24 hours</a> | <a href="https://ncc-1701.splunkcloudfed.com/en-US/app/NCO_Akamai/search?q=search%20${results.hostname}%20%7C%20fields%20_time%20dest%20geo.city%20geo.country%20http_method%20status%20uri_path%20uri_query%20message&display.page.search.mode=smart&dispatch.sample_ratio=1&earliest=-7d%40h&latest=now" target="_blank">7 Days</a> | <a href="https://ncc-1701.splunkcloudfed.com/en-US/app/NCO_Akamai/search?q=search%20${results.hostname}%20%7C%20fields%20_time%20dest%20geo.city%20geo.country%20http_method%20status%20uri_path%20uri_query%20message&display.page.search.mode=smart&dispatch.sample_ratio=1&earliest=-30d%40h&latest=now" target="_blank">30 Days</a> <br><br>`;
+
+            resultsDiv.innerHTML = message;
+        } else {
+            resultsDiv.innerHTML = `<p style="color:red;">Error: ${results.error}</p>`;
+        }
+    });
+
+});
+}
+</script>
+
+</body>
+</html>
