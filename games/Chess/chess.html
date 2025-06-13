@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human vs. Gemini AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation; /* Prevents double-tap to zoom on mobile */
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 95vw;
+            height: 95vw;
+            max-width: 600px;
+            max-height: 600px;
+            aspect-ratio: 1 / 1;
+            border: 4px solid #4a3f3b; /* Dark wood border */
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.23);
+        }
+        .square {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(20px, 8vw, 48px);
+            transition: background-color 0.2s;
+        }
+        .light { background-color: #f0d9b5; } /* Light wood */
+        .dark { background-color: #b58863; } /* Dark wood */
+        .piece {
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.2s ease-in-out;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .piece.dragging {
+            transform: scale(1.2);
+            opacity: 0.8;
+        }
+        .selected {
+            background-color: #6a994e !important; /* Green highlight */
+        }
+        .valid-move::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 35%;
+            height: 35%;
+            background-color: rgba(46, 204, 113, 0.5);
+            border-radius: 50%;
+            z-index: 5;
+        }
+        .last-move {
+             background-color: rgba(241, 196, 15, 0.5) !important; /* Yellow for last move */
+        }
+        #game-over-modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .ai-thinking-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            z-index: 999;
+        }
+        .fa-chess-king, .fa-chess-queen, .fa-chess-rook, .fa-chess-bishop, .fa-chess-knight, .fa-chess-pawn {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.25);
+        }
+        .piece-white { color: #ffffff; }
+        .piece-black { color: #333333; }
+    </style>
+</head>
+<body class="bg-gray-800 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-2xl mx-auto flex flex-col items-center">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2 text-center text-yellow-300">Human vs Gemini AI</h1>
+        
+        <!-- Game Status -->
+        <div id="status" class="h-10 text-lg mb-2 font-semibold text-center">White's Turn</div>
+
+        <!-- Chess Board -->
+        <div id="board" class="board relative">
+             <div id="ai-thinking-overlay" class="ai-thinking-overlay rounded-lg hidden">
+                <div class="text-center">
+                    <i class="fas fa-robot fa-spin fa-2x mb-2"></i>
+                    <p>Gemini is thinking...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="mt-4 flex flex-wrap justify-center gap-3">
+            <button id="play-again" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-redo mr-2"></i>Play Again
+            </button>
+            <a href="https://king.net" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-crown mr-2"></i>Back to KING.NET
+            </a>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 opacity-0 -translate-y-full pointer-events-none">
+        <div class="bg-gray-700 rounded-2xl shadow-2xl p-6 md:p-8 text-center max-w-sm w-full border-2 border-yellow-400">
+            <h2 id="modal-title" class="text-3xl font-bold mb-4 text-yellow-300">Game Over</h2>
+            <p id="modal-message" class="text-lg mb-6">You have won!</p>
+            <div class="mb-6">
+                <p class="font-semibold mb-2">Share your victory!</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="share-twitter" class="text-3xl text-blue-400 hover:text-blue-300 transition-transform transform hover:scale-110"><i class="fab fa-twitter"></i></button>
+                    <button id="share-facebook" class="text-3xl text-blue-600 hover:text-blue-500 transition-transform transform hover:scale-110"><i class="fab fa-facebook"></i></button>
+                    <button id="share-instagram" class="text-3xl text-pink-500 hover:text-pink-400 transition-transform transform hover:scale-110"><i class="fab fa-instagram"></i></button>
+                </div>
+            </div>
+            <button id="modal-close" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg w-full transition-transform transform hover:scale-105">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        const playAgainButton = document.getElementById('play-again');
+        const modal = document.getElementById('game-over-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCloseButton = document.getElementById('modal-close');
+        const shareTwitterButton = document.getElementById('share-twitter');
+        const shareFacebookButton = document.getElementById('share-facebook');
+        const shareInstagramButton = document.getElementById('share-instagram');
+        const aiThinkingOverlay = document.getElementById('ai-thinking-overlay');
+
+        // --- Game State Variables ---
+        let board = [];
+        let currentPlayer = 'w'; // 'w' for white, 'b' for black
+        let selectedSquare = null; // { row, col }
+        let validMoves = [];
+        let gameHistory = []; // To store FEN strings for AI context
+        let gameOver = false;
+        let playerColor = 'w'; // Player is always white
+        let lastMove = { from: null, to: null };
+
+        // --- Piece Representations (Unicode) ---
+        const pieces = {
+            'w': { 'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙' },
+            'b': { 'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟' }
+        };
+        
+        const pieceIcons = {
+            'w': { 'K': 'fas fa-chess-king piece-white', 'Q': 'fas fa-chess-queen piece-white', 'R': 'fas fa-chess-rook piece-white', 'B': 'fas fa-chess-bishop piece-white', 'N': 'fas fa-chess-knight piece-white', 'P': 'fas fa-chess-pawn piece-white' },
+            'b': { 'K': 'fas fa-chess-king piece-black', 'Q': 'fas fa-chess-queen piece-black', 'R': 'fas fa-chess-rook piece-black', 'B': 'fas fa-chess-bishop piece-black', 'N': 'fas fa-chess-knight piece-black', 'P': 'fas fa-chess-pawn piece-black' }
+        };
+
+        // --- Game Initialization ---
+        function initGame() {
+            // Standard chess starting position
+            board = [
+                ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+                ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+                ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
+            ];
+            currentPlayer = 'w';
+            selectedSquare = null;
+            validMoves = [];
+            gameHistory = [boardToFen()];
+            gameOver = false;
+            lastMove = { from: null, to: null };
+            renderBoard();
+            updateStatus();
+        }
+        
+        // --- Rendering Logic ---
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            // Remove ai thinking overlay if present
+            if (!boardElement.contains(aiThinkingOverlay)) {
+                boardElement.appendChild(aiThinkingOverlay);
+            }
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square', (r + c) % 2 === 0 ? 'light' : 'dark');
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+
+                    const pieceStr = board[r][c];
+                    if (pieceStr) {
+                        const color = pieceStr[0] === 'w' ? 'w' : 'b';
+                        const type = pieceStr[1];
+                        const pieceElement = document.createElement('i');
+                        pieceElement.className = `piece ${pieceIcons[color][type]}`;
+                        square.appendChild(pieceElement);
+                    }
+                    
+                    if (selectedSquare && selectedSquare.row === r && selectedSquare.col === c) {
+                        square.classList.add('selected');
+                    }
+                    
+                    if (lastMove.from && lastMove.from.row === r && lastMove.from.col === c) {
+                        square.classList.add('last-move');
+                    }
+                    if (lastMove.to && lastMove.to.row === r && lastMove.to.col === c) {
+                        square.classList.add('last-move');
+                    }
+
+                    if (validMoves.some(move => move.row === r && move.col === c)) {
+                        square.classList.add('valid-move');
+                    }
+
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+        
+        function updateStatus() {
+            if (gameOver) return;
+            statusElement.textContent = `${currentPlayer === 'w' ? 'White' : 'Black'}'s Turn`;
+        }
+
+        // --- Event Handling ---
+        boardElement.addEventListener('click', onSquareClick);
+        playAgainButton.addEventListener('click', initGame);
+        modalCloseButton.addEventListener('click', () => {
+            closeModal();
+            initGame();
+        });
+
+
+        function onSquareClick(e) {
+            if (gameOver || currentPlayer !== playerColor) return;
+
+            const square = e.target.closest('.square');
+            if (!square) return;
+
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+
+            // If a valid move is clicked
+            if (validMoves.some(move => move.row === row && move.col === col)) {
+                movePiece(selectedSquare.row, selectedSquare.col, row, col);
+                return;
+            }
+
+            // Reset selection
+            selectedSquare = null;
+            validMoves = [];
+
+            // If a piece is clicked
+            const pieceStr = board[row][col];
+            if (pieceStr && pieceStr[0] === currentPlayer) {
+                selectedSquare = { row, col };
+                validMoves = getValidMoves(row, col);
+            }
+            
+            renderBoard();
+        }
+        
+        // --- Game Logic ---
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = null;
+            
+            // Pawn Promotion
+            if (piece[1] === 'P' && (toRow === 0 || toRow === 7)) {
+                board[toRow][toCol] = piece[0] + 'Q'; // Auto-promote to Queen
+            }
+            
+            lastMove = { from: {row: fromRow, col: fromCol}, to: {row: toRow, col: toCol}};
+            
+            selectedSquare = null;
+            validMoves = [];
+            gameHistory.push(boardToFen());
+
+            if (isCheckmate(currentPlayer === 'w' ? 'b' : 'w')) {
+                endGame(currentPlayer, 'Checkmate');
+            } else if (isStalemate(currentPlayer === 'w' ? 'b' : 'w')) {
+                endGame(null, 'Stalemate');
+            } else {
+                switchPlayer();
+            }
+
+            renderBoard();
+        }
+        
+        function switchPlayer() {
+            currentPlayer = (currentPlayer === 'w') ? 'b' : 'w';
+            updateStatus();
+
+            if (currentPlayer !== playerColor && !gameOver) {
+                // AI's turn
+                aiThinkingOverlay.classList.remove('hidden');
+                setTimeout(getAiMove, 500);
+            }
+        }
+
+        function getValidMoves(row, col) {
+            // This is a simplified move generation. A full chess engine would be much more complex.
+            // It does not account for checks, pins, etc. for highlighting, but does for final move validation.
+            const piece = board[row][col];
+            if (!piece) return [];
+            
+            const color = piece[0];
+            const type = piece[1];
+            const moves = [];
+
+            const addMove = (r, c) => {
+                if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const target = board[r][c];
+                    if (target === null) {
+                        moves.push({ row: r, col: c });
+                        return true; // Can continue sliding
+                    } else if (target[0] !== color) {
+                        moves.push({ row: r, col: c });
+                        return false; // Capture, stop sliding
+                    }
+                }
+                return false;
+            };
+            
+            const addSlidingMoves = (directions) => {
+                for (const [dr, dc] of directions) {
+                    let r = row + dr, c = col + dc;
+                    while (addMove(r, c)) {
+                        const target = board[r][c];
+                        if (target !== null) break;
+                        r += dr; c += dc;
+                    }
+                }
+            };
+            
+            switch (type) {
+                case 'P':
+                    const dir = color === 'w' ? -1 : 1;
+                    const startRow = color === 'w' ? 6 : 1;
+                    // Forward 1
+                    if (row + dir >= 0 && row + dir < 8 && board[row + dir][col] === null) {
+                        moves.push({ row: row + dir, col: col });
+                        // Forward 2 from start
+                        if (row === startRow && board[row + 2 * dir][col] === null) {
+                            moves.push({ row: row + 2 * dir, col: col });
+                        }
+                    }
+                    // Captures
+                    [-1, 1].forEach(dc => {
+                        if (col + dc >= 0 && col + dc < 8) {
+                            const target = board[row + dir]?.[col + dc];
+                            if (target && target[0] !== color) {
+                                moves.push({ row: row + dir, col: col + dc });
+                            }
+                        }
+                    });
+                    break;
+                case 'N':
+                    [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]].forEach(([dr, dc]) => {
+                        addMove(row + dr, col + dc);
+                    });
+                    break;
+                case 'B':
+                    addSlidingMoves([[1,1], [1,-1], [-1,1], [-1,-1]]);
+                    break;
+                case 'R':
+                    addSlidingMoves([[1,0], [-1,0], [0,1], [0,-1]]);
+                    break;
+                case 'Q':
+                    addSlidingMoves([[1,1], [1,-1], [-1,1], [-1,-1], [1,0], [-1,0], [0,1], [0,-1]]);
+                    break;
+                case 'K':
+                    [[1,1], [1,-1], [-1,1], [-1,-1], [1,0], [-1,0], [0,1], [0,-1]].forEach(([dr, dc]) => {
+                        addMove(row + dr, col + dc);
+                    });
+                    break;
+            }
+
+            // Filter out moves that would leave the king in check
+            return moves.filter(move => {
+                const tempBoard = JSON.parse(JSON.stringify(board));
+                tempBoard[move.row][move.col] = tempBoard[row][col];
+                tempBoard[row][col] = null;
+                return !isKingInCheck(color, tempBoard);
+            });
+        }
+        
+        function isKingInCheck(kingColor, currentBoard) {
+            const kingPos = findKing(kingColor, currentBoard);
+            if (!kingPos) return false;
+            
+            const opponentColor = kingColor === 'w' ? 'b' : 'w';
+            for(let r=0; r<8; r++){
+                for(let c=0; c<8; c++){
+                    const piece = currentBoard[r][c];
+                    if(piece && piece[0] === opponentColor) {
+                        // This needs a simplified "can attack" check, not a full getValidMoves
+                        if (canPieceAttack(r, c, kingPos.row, kingPos.col, currentBoard)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Simplified attack check for isKingInCheck logic
+        function canPieceAttack(fromRow, fromCol, toRow, toCol, currentBoard) {
+            const piece = currentBoard[fromRow][fromCol];
+            const type = piece[1];
+            const color = piece[0];
+            const dr = toRow - fromRow;
+            const dc = toCol - fromCol;
+
+            switch(type) {
+                case 'P':
+                    const forwardDir = color === 'w' ? -1 : 1;
+                    return dr === forwardDir && Math.abs(dc) === 1;
+                case 'N':
+                    return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
+                case 'B':
+                    if (Math.abs(dr) !== Math.abs(dc)) return false;
+                    return isPathClear(fromRow, fromCol, toRow, toCol, currentBoard);
+                case 'R':
+                    if (dr !== 0 && dc !== 0) return false;
+                    return isPathClear(fromRow, fromCol, toRow, toCol, currentBoard);
+                case 'Q':
+                     return isPathClear(fromRow, fromCol, toRow, toCol, currentBoard);
+                case 'K':
+                    return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
+            }
+            return false;
+        }
+
+        function isPathClear(fromRow, fromCol, toRow, toCol, currentBoard) {
+            const dr = Math.sign(toRow - fromRow);
+            const dc = Math.sign(toCol - fromCol);
+            let r = fromRow + dr;
+            let c = fromCol + dc;
+            while (r !== toRow || c !== toCol) {
+                if (currentBoard[r][c]) return false;
+                r += dr;
+                c += dc;
+            }
+            return true;
+        }
+        
+        function findKing(color, currentBoard) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (currentBoard[r][c] === color + 'K') {
+                        return { row: r, col: c };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function getAllLegalMoves(color, currentBoard) {
+            const allMoves = [];
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    const piece = currentBoard[r][c];
+                    if (piece && piece[0] === color) {
+                        const moves = getValidMoves(r, c); // getValidMoves already filters for legality (checks)
+                        if(moves.length > 0) {
+                            allMoves.push(...moves.map(m => ({from: {row: r, col: c}, to: m})));
+                        }
+                    }
+                }
+            }
+            return allMoves;
+        }
+
+        function isCheckmate(color) {
+            return isKingInCheck(color, board) && getAllLegalMoves(color, board).length === 0;
+        }
+
+        function isStalemate(color) {
+            return !isKingInCheck(color, board) && getAllLegalMoves(color, board).length === 0;
+        }
+        
+        function endGame(winner, reason) {
+            gameOver = true;
+            let title = "Game Over";
+            let message = "";
+            if (reason === 'Checkmate') {
+                title = "Checkmate!";
+                message = `${winner === 'w' ? 'White' : 'Black'} wins!`;
+                 if (winner === playerColor) {
+                    message = "Congratulations, you won!";
+                } else {
+                    message = "Good game! The AI has won.";
+                }
+            } else if (reason === 'Stalemate') {
+                title = "Stalemate!";
+                message = "The game is a draw.";
+            }
+            statusElement.textContent = message;
+            showModal(title, message);
+        }
+
+        // --- FEN Conversion ---
+        function boardToFen() {
+            let fen = '';
+            for (let r = 0; r < 8; r++) {
+                let empty = 0;
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        if (empty > 0) {
+                            fen += empty;
+                            empty = 0;
+                        }
+                        fen += piece[0] === 'w' ? piece[1].toUpperCase() : piece[1].toLowerCase();
+                    } else {
+                        empty++;
+                    }
+                }
+                if (empty > 0) {
+                    fen += empty;
+                }
+                if (r < 7) {
+                    fen += '/';
+                }
+            }
+            fen += ` ${currentPlayer} KQkq - 0 1`; // Simplified FEN, omitting castling, en passant etc.
+            return fen;
+        }
+
+        // --- AI Logic ---
+        async function getAiMove() {
+            const fen = boardToFen();
+            const prompt = `You are a world-class chess engine named Gemini-Chess. It's your turn to move.
+The player is White (w), and you are Black (b).
+The current board state in FEN notation is: ${fen}
+Analyze the position and provide your best move in long algebraic notation (e.g., e7e5, g8f6, d7d5).
+Only return the move, with no other text or explanation.`;
+
+            try {
+                // Gemini API call
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts.length > 0) {
+                    const aiMoveStr = result.candidates[0].content.parts[0].text.trim();
+                    const move = parseLongAlgebraic(aiMoveStr);
+                    if (move) {
+                        // Check if the AI move is legal before applying
+                        const legalMoves = getAllLegalMoves('b', board);
+                        const isLegal = legalMoves.some(m => 
+                            m.from.row === move.from.row && m.from.col === move.from.col &&
+                            m.to.row === move.to.row && m.to.col === move.to.col
+                        );
+
+                        if(isLegal) {
+                             movePiece(move.from.row, move.from.col, move.to.row, move.to.col);
+                        } else {
+                            console.error("AI tried an illegal move:", aiMoveStr);
+                            // Fallback: pick a random legal move
+                            if (legalMoves.length > 0) {
+                                const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                                movePiece(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col);
+                            } else {
+                                // This should not happen if game over logic is correct
+                                endGame(null, 'Stalemate'); 
+                            }
+                        }
+                    } else {
+                        throw new Error("Could not parse AI move: " + aiMoveStr);
+                    }
+                } else {
+                     throw new Error("Invalid response structure from API.");
+                }
+            } catch (error) {
+                console.error("Error fetching AI move:", error);
+                statusElement.textContent = "AI Error. Your turn.";
+                // Let the user play again if the AI fails
+                currentPlayer = playerColor;
+            } finally {
+                aiThinkingOverlay.classList.add('hidden');
+            }
+        }
+
+        function parseLongAlgebraic(moveStr) {
+            // e.g., "e2e4"
+            const fromFile = moveStr[0];
+            const fromRank = moveStr[1];
+            const toFile = moveStr[2];
+            const toRank = moveStr[3];
+
+            if(!fromFile || !fromRank || !toFile || !toRank) return null;
+
+            const fromCol = fromFile.charCodeAt(0) - 'a'.charCodeAt(0);
+            const fromRow = 8 - parseInt(fromRank);
+            const toCol = toFile.charCodeAt(0) - 'a'.charCodeAt(0);
+            const toRow = 8 - parseInt(toRank);
+
+            if (isNaN(fromCol) || isNaN(fromRow) || isNaN(toCol) || isNaN(toRow)) return null;
+
+            return { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+        }
+        
+        // --- Modal & Sharing ---
+        function showModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.remove('opacity-0', '-translate-y-full', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'translate-y-0');
+        }
+
+        function closeModal() {
+            modal.classList.add('opacity-0', '-translate-y-full', 'pointer-events-none');
+            modal.classList.remove('opacity-100', 'translate-y-0');
+        }
+
+        shareTwitterButton.addEventListener('click', () => {
+            const text = "I just played a game of Chess against Google's Gemini AI! Can you beat it? #Chess #AI #Gemini #KINGNET";
+            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        });
+
+        shareFacebookButton.addEventListener('click', () => {
+            // Facebook requires a URL to share. We'll link to a general gaming site as a placeholder.
+            const urlToShare = 'https://king.net';
+            const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}`;
+            window.open(url, '_blank');
+        });
+
+        shareInstagramButton.addEventListener('click', () => {
+            alert("To share on Instagram, please take a screenshot of the final board and share it in your story or feed!");
+        });
+
+
+        // --- Start the game ---
+        initGame();
+    });
+    </script>
+</body>
+</html>
