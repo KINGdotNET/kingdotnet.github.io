@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ANTIBOT.COM - RPG Mobile Game</title>
     <link rel="icon" type="image/x-icon" href="https://placehold.co/32x32/000/fff?text=AB">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5903031199985375"
-            crossorigin="anonymous"></script>
     <style>
         /* Import Google Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -269,7 +267,6 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 20px; /* Add margin below share buttons to separate from ads */
         }
         #socialShareButtons button {
             background-color: #333;
@@ -286,19 +283,6 @@
         #socialShareButtons button:hover {
             opacity: 0.8;
         }
-
-        /* AdSense Container Styling */
-        #adsense-container {
-            margin-top: 25px; /* Add some space above the ad */
-            min-height: 250px; /* Give it a minimum height to avoid layout shifts */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(0,0,0,0.2); /* Light background for visibility */
-            border-radius: 8px;
-            overflow: hidden; /* Important for ads that might stretch */
-        }
-
 
         /* Media Queries for Mobile Responsiveness of Modals */
         @media (max-width: 600px) {
@@ -354,7 +338,7 @@
     <div id="startModal" class="modal">
         <div class="modal-content">
             <h2>ANTIBOT.COM</h2>
-            <p style="font-size: 1.2em; margin-bottom: 25px;">Destroy all enemy UFO, UAP and AI units!</p>
+            <p style="font-size: 1.2em; margin-bottom: 25px;">Destroy all enemy UFOs, UAP and AI units!</p>
             <div class="modal-buttons">
                 <button class="modal-button" id="startGameBtn">Start Game</button>
             </div>
@@ -371,9 +355,6 @@
                 <button id="facebookShareBtn">Share on Facebook</button>
                 <button id="instagramShareBtn">Share on Instagram</button>
             </div>
-
-            <div id="adsense-container">
-                </div>
 
             <div class="modal-buttons">
                 <button class="modal-button" id="restartGameBtn">Play Again</button>
@@ -468,10 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const twitterShareBtn = document.getElementById('twitterShareBtn');
     const facebookShareBtn = document.getElementById('facebookShareBtn');
     const instagramShareBtn = document.getElementById('instagramShareBtn');
-
-    // --- AdSense specific element ---
-    const adsenseContainer = document.getElementById('adsense-container');
-
 
     let animationFrameId = null;
     let gameState = 'start'; // 'start', 'playing', 'game_over'
@@ -625,12 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState = 'playing';
         startModal.style.display = 'none';
         gameOverModal.style.display = 'none';
-
-        // --- AdSense: Clear and hide the ad container when starting a new game ---
-        if (adsenseContainer) {
-            adsenseContainer.innerHTML = ''; // Clear previous ad content
-            adsenseContainer.style.display = 'none'; // Hide the container
-        }
     }
 
     function updateUI() {
@@ -1624,35 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
         finalScoreText.innerText = `Your score: ${score}`;
         gameOverModal.style.display = 'flex';
 
-        // --- AdSense: Show ad after game over ---
-        loadAdsenseAd();
-
         captureScreenshotForShare();
-    }
-
-    // --- AdSense Loading Function ---
-    function loadAdsenseAd() {
-        if (adsenseContainer) {
-            // Your AdSense ad unit code. Replace `data-ad-client` and `data-ad-slot`
-            // with your actual ad unit's publisher ID and slot ID.
-            adsenseContainer.innerHTML = `
-                <ins class="adsbygoogle"
-                     style="display:block"
-                     data-ad-client="ca-pub-5903031199985375"
-                     data-ad-slot="YOUR_AD_SLOT_ID_HERE"
-                     data-ad-format="auto"
-                     data-full-width-responsive="true"></ins>
-            `;
-            adsenseContainer.style.display = 'flex'; // Make sure the container is visible
-
-            // Push a command to the AdSense array to load the ad
-            // This is crucial for ads loaded dynamically
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-
-            console.log("AdSense ad unit requested.");
-        } else {
-            console.warn("AdSense container not found. Cannot load ad.");
-        }
     }
 
     // --- Social Media Sharing ---
