@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama's Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .game-container {
+            position: relative;
+            margin-top: 20px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: #fff;
+        }
+
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score-panel {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            display: flex;
+            gap: 20px;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .score-value {
+            font-size: 24px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .game-over-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            display: none;
+            z-index: 100;
+            animation: bounceIn 0.5s ease-out;
+        }
+
+        .game-over-modal.show {
+            display: block;
+        }
+
+        .game-over-title {
+            font-size: 36px;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .final-score {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .new-record {
+            font-size: 20px;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        .retry-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .retry-btn:active {
+            transform: translateY(0);
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .start-screen.hide {
+            display: none;
+        }
+
+        .game-title {
+            font-size: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .sound-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            transition: transform 0.3s, background 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            60% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="sound-toggle" id="soundToggle">🔊</button>
+
+    <div class="game-container">
+        <div class="ui-overlay">
+            <div class="score-panel">
+                <div class="score-item">
+                    <span class="score-label">Score</span>
+                    <span class="score-value" id="score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">High Score</span>
+                    <span class="score-value" id="highScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Speed</span>
+                    <span class="score-value" id="speed">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
+
+        <div class="start-screen" id="startScreen">
+            <h1 class="game-title">🦙 Ollama's Adventure 🦙</h1>
+            <button class="start-btn" id="startBtn">Start Game!</button>
+            <div class="instructions">
+                <p>Press <strong>SPACE</strong> or <strong>Click</strong> to jump!</p>
+                <p>Jump over cacti and rocks to survive!</p>
+                <p>The game gets faster as you progress!</p>
+            </div>
+        </div>
+
+        <div class="game-over-modal" id="gameOverModal">
+            <h2 class="game-over-title">Game Over!</h2>
+            <div class="final-score">Final Score: <span id="finalScore">0</span></div>
+            <div class="new-record" id="newRecord" style="display: none;">🎉 New Record! 🎉</div>
+            <button class="retry-btn" id="retryBtn">Try Again!</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Sound System
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.audioContext = null;
+                this.initAudio();
+            }
+
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio API not supported');
+                }
+            }
+
+            playJump() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.2);
+            }
+
+            playCollect() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.3);
+            }
+
+            playHit() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.3);
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+        }
+
+        const soundManager = new SoundManager();
+
+        // Game Variables
+        let gameRunning = false;
+        let score = 0;
+        let highScore = localStorage.getItem('ollamaHighScore') || 0;
+        let gameSpeed = 5;
+        let speedMultiplier = 1;
+
+        // Update high score display
+        document.getElementById('highScore').textContent = highScore;
+
+        // Alpaca (Player) - Completely redesigned!
+        class Alpaca {
+            constructor() {
+                this.x = 120;
+                this.y = canvas.height - 200;
+                this.width = 70;
+                this.height = 90;
+                this.velocityY = 0;
+                this.gravity = 0.6;
+                this.jumpPower = -15;
+                this.isJumping = false;
+                this.groundY = canvas.height - 200;
+                this.legAnimation = 0;
+                this.tailSwing = 0;
+            }
+
+            update() {
+                this.velocityY += this.gravity;
+                this.y += this.velocityY;
+
+                if (this.y >= this.groundY) {
+                    this.y = this.groundY;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                }
+
+                // Animate legs when running
+                if (!this.isJumping) {
+                    this.legAnimation += 0.4;
+                }
+                
+                // Tail animation
+                this.tailSwing = Math.sin(this.legAnimation * 0.5) * 15;
+            }
+
+            jump() {
+                if (!this.isJumping) {
+                    this.velocityY = this.jumpPower;
+                    this.isJumping = true;
+                    soundManager.playJump();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 20, this.groundY + this.height - 10, 25, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Tail
+                ctx.fillStyle = '#d4c4b0';
+                ctx.save();
+                ctx.translate(this.x - 10, this.y + 20);
+                ctx.rotate(this.tailSwing * Math.PI / 180);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 15, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Tail fluff
+                for (let i = 0; i < 6; i++) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        -5 + Math.cos(i) * 8,
+                        Math.sin(i) * 6,
+                        4,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                ctx.restore();
+                
+                // Back legs
+                ctx.fillStyle = '#c0b0a0';
+                const backLegOffset = Math.sin(this.legAnimation) * 8;
+                
+                if (!this.isJumping) {
+                    // Animated back legs
+                    ctx.save();
+                    ctx.translate(this.x + 35, this.y + 45);
+                    ctx.rotate(-backLegOffset * 0.05);
+                    ctx.fillRect(0, 0, 12, 35);
+                    ctx.fillRect(-5, 30, 20, 8);
+                    ctx.restore();
+                    
+                    ctx.save();
+                    ctx.translate(this.x + 45, this.y + 45);
+                    ctx.rotate(backLegOffset * 0.05);
+                    ctx.fillRect(0, 0, 12, 35);
+                    ctx.fillRect(-5, 30, 20, 8);
+                    ctx.restore();
+                } else {
+                    // Extended legs when jumping
+                    ctx.fillRect(this.x + 35, this.y + 25, 12, 45);
+                    ctx.fillRect(this.x + 45, this.y + 25, 12, 45);
+                    ctx.fillRect(this.x + 30, this.y + 65, 20, 8);
+                    ctx.fillRect(this.x + 40, this.y + 65, 20, 8);
+                }
+                
+                // Body (main fluffy part)
+                ctx.fillStyle = '#e8d9c3';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 30, this.y + 35, 35, 28, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Neck
+                ctx.fillStyle = '#e0d0bb';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 35, this.y + 5, 18, 22, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Front legs
+                const frontLegOffset = Math.sin(this.legAnimation + Math.PI) * 8;
+                
+                if (!this.isJumping) {
+                    // Animated front legs
+                    ctx.save();
+                    ctx.translate(this.x + 15, this.y + 45);
+                    ctx.rotate(-frontLegOffset * 0.05);
+                    ctx.fillRect(0, 0, 12, 35);
+                    ctx.fillRect(-5, 30, 20, 8);
+                    ctx.restore();
+                    
+                    ctx.save();
+                    ctx.translate(this.x + 25, this.y + 45);
+                    ctx.rotate(frontLegOffset * 0.05);
+                    ctx.fillRect(0, 0, 12, 35);
+                    ctx.fillRect(-5, 30, 20, 8);
+                    ctx.restore();
+                } else {
+                    // Extended legs when jumping
+                    ctx.fillRect(this.x + 15, this.y + 25, 12, 45);
+                    ctx.fillRect(this.x + 25, this.y + 25, 12, 45);
+                    ctx.fillRect(this.x + 10, this.y + 65, 20, 8);
+                    ctx.fillRect(this.x + 20, this.y + 65, 20, 8);
+                }
+                
+                // Head
+                ctx.fillStyle = '#e8d9c3';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 45, this.y - 10, 22, 20, 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Snout
+                ctx.fillStyle = '#d0c0b0';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 55, this.y - 5, 12, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Eyes (big and cute!)
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 42, this.y - 15, 5, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(this.x + 48, this.y - 15, 5, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Eye sparkles
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(this.x + 43, this.y - 17, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x + 49, this.y - 17, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Nose
+                ctx.fillStyle = '#2a2a2a';
+                ctx.beginPath();
+                ctx.ellipse(this.x + 58, this.y - 5, 3, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Cute mouth
+                ctx.strokeStyle = '#2a2a2a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x + 58, this.y - 2, 4, 0, Math.PI);
+                ctx.stroke();
+                
+                // Ears (long and fuzzy)
+                ctx.fillStyle = '#d0c0b0';
+                
+                // Left ear
+                ctx.save();
+                ctx.translate(this.x + 35, this.y - 25);
+                ctx.rotate(-0.3);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 8, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#b0a090';
+                ctx.beginPath();
+                ctx.ellipse(0, 3, 4, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                // Right ear
+                ctx.save();
+                ctx.translate(this.x + 50, this.y - 28);
+                ctx.rotate(0.3);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 8, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#b0a090';
+                ctx.beginPath();
+                ctx.ellipse(0, 3, 4, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                // Fluffy fur texture on body
+                ctx.fillStyle = '#f5e8da';
+                for (let i = 0; i < 15; i++) {
+                    const furX = this.x + 10 + Math.random() * 40;
+                    const furY = this.y + 15 + Math.random() * 30;
+                    ctx.beginPath();
+                    ctx.arc(furX, furY, Math.random() * 3 + 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Fluffy top of head
+                for (let i = 0; i < 8; i++) {
+                    const fluffX = this.x + 35 + Math.random() * 20;
+                    const fluffY = this.y - 30 + Math.random() * 10;
+                    ctx.beginPath();
+                    ctx.arc(fluffX, fluffY, Math.random() * 4 + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Obstacle class
+        class Obstacle {
+            constructor(x) {
+                this.x = x;
+                this.type = Math.random() > 0.5 ? 'cactus' : 'rock';
+                this.width = this.type === 'cactus' ? 40 : 50;
+                this.height = this.type === 'cactus' ? 70 : 40;
+                this.y = canvas.height - 120 - this.height;
+                this.passed = false;
+            }
+
+            update() {
+                this.x -= gameSpeed * speedMultiplier;
+            }
+
+            draw() {
+                ctx.save();
+                
+                if (this.type === 'cactus') {
+                    // Draw cactus
+                    ctx.fillStyle = '#2d5016';
+                    
+                    // Main body
+                    ctx.fillRect(this.x + 15, this.y + 20, 10, 50);
+                    
+                    // Arms
+                    ctx.fillRect(this.x + 5, this.y + 35, 10, 20);
+                    ctx.fillRect(this.x + 25, this.y + 30, 10, 20);
+                    
+                    // Spikes
+                    ctx.strokeStyle = '#1a3009';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 10; i++) {
+                        const spikeY = this.y + 25 + i * 5;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + 10, spikeY);
+                        ctx.lineTo(this.x + 5, spikeY - 2);
+                        ctx.moveTo(this.x + 30, spikeY);
+                        ctx.lineTo(this.x + 35, spikeY - 2);
+                        ctx.stroke();
+                    }
+                } else {
+                    // Draw rock
+                    ctx.fillStyle = '#8b7355';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 25, this.y);
+                    ctx.lineTo(this.x + 50, this.y + 15);
+                    ctx.lineTo(this.x + 45, this.y + 40);
+                    ctx.lineTo(this.x + 5, this.y + 40);
+                    ctx.lineTo(this.x, this.y + 15);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Rock texture
+                    ctx.fillStyle = '#6b5345';
+                    ctx.beginPath();
+                    ctx.arc(this.x + 15, this.y + 15, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x + 35, this.y + 20, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Cloud class for parallax background
+        class Cloud {
+            constructor(x, y, size, speed) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = speed;
+            }
+
+            update() {
+                this.x -= this.speed * speedMultiplier;
+                if (this.x < -100) {
+                    this.x = canvas.width + 100;
+                    this.y = Math.random() * 150;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                
+                // Draw cloud with circles
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size, this.y, this.size * 0.8, 0, Math.PI * 2);
+                ctx.arc(this.x - this.size * 0.7, this.y, this.size * 0.7, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size * 0.3, this.y - this.size * 0.5, this.size * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        // Ground decoration
+        class GroundDecoration {
+            constructor(x) {
+                this.x = x;
+                this.type = Math.random() > 0.5 ? 'grass' : 'flower';
+                this.height = Math.random() * 20 + 10;
+            }
+
+            update() {
+                this.x -= gameSpeed * speedMultiplier * 0.5;
+                if (this.x < -20) {
+                    this.x = canvas.width + 20;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                if (this.type === 'grass') {
+                    ctx.strokeStyle = '#4a7c4e';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + i * 5, canvas.height - 120);
+                        ctx.quadraticCurveTo(
+                            this.x + i * 5 + 2,
+                            canvas.height - 120 - this.height,
+                            this.x + i * 5 + 4,
+                            canvas.height - 120
+                        );
+                        ctx.stroke();
+                    }
+                } else {
+                    // Flower
+                    ctx.strokeStyle = '#228b22';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, canvas.height - 120);
+                    ctx.lineTo(this.x, canvas.height - 120 - this.height);
+                    ctx.stroke();
+                    
+                    // Petals
+                    ctx.fillStyle = '#ff69b4';
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * Math.PI * 2) / 5;
+                        ctx.beginPath();
+                        ctx.arc(
+                            this.x + Math.cos(angle) * 8,
+                            canvas.height - 120 - this.height + Math.sin(angle) * 8,
+                            4,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                    
+                    // Center
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(this.x, canvas.height - 120 - this.height, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Game objects
+        const alpaca = new Alpaca();
+        let obstacles = [];
+        let clouds = [];
+        let decorations = [];
+        let frameCount = 0;
+
+        // Initialize background elements
+        for (let i = 0; i < 5; i++) {
+            clouds.push(new Cloud(
+                Math.random() * canvas.width,
+                Math.random() * 150,
+                Math.random() * 20 + 20,
+                Math.random() * 1 + 0.5
+            ));
+        }
+
+        for (let i = 0; i < 10; i++) {
+            decorations.push(new GroundDecoration(Math.random() * canvas.width));
+        }
+
+        // Draw background
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.4, '#98D8E8');
+            gradient.addColorStop(0.5, '#F0E68C');
+            gradient.addColorStop(1, '#F5DEB3');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Sun
+            ctx.save();
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Sun rays
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * Math.PI * 2) / 12;
+                ctx.beginPath();
+                ctx.moveTo(
+                    canvas.width - 100 + Math.cos(angle) * 50,
+                    80 + Math.sin(angle) * 50
+                );
+                ctx.lineTo(
+                    canvas.width - 100 + Math.cos(angle) * 65,
+                    80 + Math.sin(angle) * 65
+                );
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Mountains
+            ctx.fillStyle = '#8b7d6b';
+            ctx.beginPath();
+            ctx.moveTo(0, 300);
+            ctx.lineTo(200, 150);
+            ctx.lineTo(400, 250);
+            ctx.lineTo(600, 100);
+            ctx.lineTo(canvas.width, 280);
+            ctx.lineTo(canvas.width, canvas.height - 120);
+            ctx.lineTo(0, canvas.height - 120);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Mountain snow caps
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(150, 180);
+            ctx.lineTo(200, 150);
+            ctx.lineTo(250, 180);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(550, 130);
+            ctx.lineTo(600, 100);
+            ctx.lineTo(650, 130);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Draw ground
+        function drawGround() {
+            // Ground
+            ctx.fillStyle = '#8B7355';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
+            
+            // Ground texture
+            ctx.fillStyle = '#6b5345';
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.arc(
+                    i * 50 + Math.random() * 50,
+                    canvas.height - 100 + Math.random() * 40,
+                    Math.random() * 3 + 1,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background elements
+            drawBackground();
+            
+            // Update and draw clouds (parallax layer 1)
+            clouds.forEach(cloud => {
+                cloud.update();
+                cloud.draw();
+            });
+
+            // Update and draw decorations (parallax layer 2)
+            decorations.forEach(decoration => {
+                decoration.update();
+                decoration.draw();
+            });
+
+            drawGround();
+
+            // Update and draw alpaca
+            alpaca.update();
+            alpaca.draw();
+
+            // Spawn obstacles
+            frameCount++;
+            if (frameCount % Math.floor(100 / speedMultiplier) === 0) {
+                obstacles.push(new Obstacle(canvas.width));
+            }
+
+            // Update and draw obstacles
+            obstacles = obstacles.filter(obstacle => {
+                obstacle.update();
+                obstacle.draw();
+
+                // Check collision with more precise hitbox
+                const padding = 10; // Slightly forgiving collision
+                if (
+                    alpaca.x + padding < obstacle.x + obstacle.width &&
+                    alpaca.x + alpaca.width - padding > obstacle.x &&
+                    alpaca.y + padding < obstacle.y + obstacle.height &&
+                    alpaca.y + alpaca.height - padding > obstacle.y
+                ) {
+                    endGame();
+                    return false;
+                }
+
+                // Check if passed
+                if (!obstacle.passed && obstacle.x + obstacle.width < alpaca.x) {
+                    obstacle.passed = true;
+                    score++;
+                    document.getElementById('score').textContent = score;
+                    soundManager.playCollect();
+                    
+                    // Increase speed every 10 points
+                    if (score % 10 === 0) {
+                        speedMultiplier += 0.2;
+                        document.getElementById('speed').textContent = speedMultiplier.toFixed(1) + 'x';
+                    }
+                }
+
+                return obstacle.x > -obstacle.width;
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            speedMultiplier = 1;
+            obstacles = [];
+            frameCount = 0;
+            alpaca.y = alpaca.groundY;
+            alpaca.velocityY = 0;
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('speed').textContent = speedMultiplier.toFixed(1) + 'x';
+            document.getElementById('startScreen').classList.add('hide');
+            document.getElementById('gameOverModal').classList.remove('show');
+            
+            gameLoop();
+        }
+
+        // End game
+        function endGame() {
+            gameRunning = false;
+            soundManager.playHit();
+            
+            document.getElementById('finalScore').textContent = score;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('ollamaHighScore', highScore);
+                document.getElementById('highScore').textContent = highScore;
+                document.getElementById('newRecord').style.display = 'block';
+            } else {
+                document.getElementById('newRecord').style.display = 'none';
+            }
+            
+            document.getElementById('gameOverModal').classList.add('show');
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('retryBtn').addEventListener('click', startGame);
+
+        // Jump controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameRunning) {
+                e.preventDefault();
+                alpaca.jump();
+            }
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameRunning) {
+                alpaca.jump();
+            }
+        });
+
+        // Sound toggle
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            const enabled = soundManager.toggle();
+            document.getElementById('soundToggle').textContent = enabled ? '🔊' : '🔇';
+        });
+
+        // Touch support for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameRunning) {
+                alpaca.jump();
+            }
+        });
+    </script>
+</body>
+</html>

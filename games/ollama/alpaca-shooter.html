@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpaca Shooter - Bomb Defusal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 900px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B0E0E6 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score-value {
+            color: #4ecdc4;
+            font-size: 28px;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .lives {
+            display: flex;
+            gap: 5px;
+            font-size: 30px;
+        }
+
+        .game-area {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            cursor: crosshair;
+        }
+
+        .alpaca {
+            position: absolute;
+            bottom: 20px;
+            font-size: 60px;
+            user-select: none;
+            transition: left 0.1s ease-out;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+            z-index: 10;
+        }
+
+        .alpaca.shooting {
+            animation: recoil 0.2s ease-out;
+        }
+
+        @keyframes recoil {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px) scale(0.95); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: linear-gradient(to top, #FFD700, #FFA500);
+            border-radius: 50% 50% 0 0;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            z-index: 5;
+        }
+
+        .bomb-target {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease-out;
+            cursor: pointer;
+            animation: wobble 2s ease-in-out infinite;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-5deg) translateY(0); }
+            25% { transform: rotate(5deg) translateY(-5px); }
+            50% { transform: rotate(-5deg) translateY(0); }
+            75% { transform: rotate(5deg) translateY(-5px); }
+        }
+
+        .bomb-target:hover {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .bomb-target.hit {
+            animation: explode 0.5s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            50% { transform: scale(1.5) rotate(180deg); opacity: 0.5; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        .explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .explosion::before {
+            content: '💥';
+            font-size: 60px;
+            position: absolute;
+            animation: explodeEffect 0.5s ease-out forwards;
+        }
+
+        @keyframes explodeEffect {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .score-popup {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            z-index: 60;
+            animation: scoreFloat 1s ease-out forwards;
+        }
+
+        @keyframes scoreFloat {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-50px) rotate(360deg); opacity: 0; }
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 200;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-over h2 {
+            color: #e74c3c;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            font-size: 24px;
+            color: #4ecdc4;
+            margin-bottom: 30px;
+        }
+
+        .restart-btn {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 100px;
+            opacity: 0.7;
+            animation: drift 20s linear infinite;
+        }
+
+        .cloud::before,
+        .cloud::after {
+            content: '';
+            position: absolute;
+            background: white;
+            border-radius: 100px;
+        }
+
+        .cloud1 {
+            width: 100px;
+            height: 40px;
+            top: 20%;
+            left: -100px;
+        }
+
+        .cloud1::before {
+            width: 50px;
+            height: 50px;
+            top: -25px;
+            left: 10px;
+        }
+
+        .cloud1::after {
+            width: 60px;
+            height: 40px;
+            top: -15px;
+            right: 10px;
+        }
+
+        @keyframes drift {
+            from { transform: translateX(0); }
+            to { transform: translateX(calc(100vw + 100px)); }
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            color: white;
+        }
+
+        .start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .start-screen p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .start-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 90;
+        }
+
+        .danger-zone {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to top, rgba(255, 0, 0, 0.2), transparent);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="score">
+                <span>Score:</span>
+                <span class="score-value" id="score">0</span>
+            </div>
+            <div class="lives" id="lives">
+                <span>❤️</span>
+                <span>❤️</span>
+                <span>❤️</span>
+            </div>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="cloud cloud1"></div>
+            <div class="danger-zone"></div>
+            <div class="alpaca" id="alpaca">🦙</div>
+        </div>
+
+        <div class="controls-hint">Move: Arrow Keys or A/D | Shoot: Space or Click</div>
+
+        <div class="start-screen" id="startScreen">
+            <h1>💣 Alpaca Bomb Squad 💣</h1>
+            <p>
+                Help the alpaca defuse all the bombs!<br>
+                Each defused bomb gives you 100 points.<br>
+                Don't let any bombs reach the danger zone!
+            </p>
+            <button class="start-btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let lives = 3;
+        let alpacaPosition = 400;
+        let bullets = [];
+        let bombs = [];
+        let gameActive = false;
+        let animationId;
+
+        const gameArea = document.getElementById('gameArea');
+        const alpaca = document.getElementById('alpaca');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+
+        // Movement
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && gameActive) {
+                e.preventDefault();
+                shoot();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Mouse/touch shooting
+        gameArea.addEventListener('click', (e) => {
+            if (gameActive) {
+                shoot();
+            }
+        });
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            updateUI();
+            gameLoop();
+            spawnBombs();
+        }
+
+        function updateUI() {
+            scoreElement.textContent = score;
+            scoreElement.classList.add('score-value');
+            setTimeout(() => scoreElement.classList.remove('score-value'), 500);
+            
+            livesElement.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                livesElement.innerHTML += '<span>❤️</span>';
+            }
+        }
+
+        function shoot() {
+            if (!gameActive) return;
+            
+            alpaca.classList.add('shooting');
+            setTimeout(() => alpaca.classList.remove('shooting'), 200);
+            
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet';
+            bullet.style.left = (alpacaPosition + 30) + 'px';
+            bullet.style.bottom = '80px';
+            gameArea.appendChild(bullet);
+            
+            bullets.push({
+                element: bullet,
+                x: alpacaPosition + 30,
+                y: gameArea.offsetHeight - 100
+            });
+        }
+
+        function spawnBombs() {
+            if (!gameActive) return;
+            
+            const bomb = document.createElement('div');
+            bomb.className = 'bomb-target';
+            bomb.innerHTML = '💣';
+            
+            const x = Math.random() * (gameArea.offsetWidth - 80);
+            const y = Math.random() * (gameArea.offsetHeight - 300) + 100;
+            
+            bomb.style.left = x + 'px';
+            bomb.style.top = y + 'px';
+            gameArea.appendChild(bomb);
+            
+            bombs.push({
+                element: bomb,
+                x: x,
+                y: y,
+                speed: 1 + Math.random() * 2
+            });
+            
+            setTimeout(() => spawnBombs(), 1500 + Math.random() * 1500);
+        }
+
+        function moveAlpaca() {
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                alpacaPosition = Math.max(0, alpacaPosition - 8);
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                alpacaPosition = Math.min(gameArea.offsetWidth - 60, alpacaPosition + 8);
+            }
+            alpaca.style.left = alpacaPosition + 'px';
+        }
+
+        function updateBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.y -= 10;
+                bullet.element.style.bottom = (gameArea.offsetHeight - bullet.y) + 'px';
+                
+                if (bullet.y < 0) {
+                    bullet.element.remove();
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+
+        function updateBombs() {
+            bombs = bombs.filter(bomb => {
+                bomb.x += Math.sin(Date.now() * 0.001 + bomb.y) * bomb.speed;
+                bomb.y += 0.5 + Math.cos(Date.now() * 0.001) * 0.5;
+                
+                if (bomb.x < 0 || bomb.x > gameArea.offsetWidth - 80) {
+                    bomb.speed *= -1;
+                }
+                
+                bomb.element.style.left = bomb.x + 'px';
+                bomb.element.style.top = bomb.y + 'px';
+                
+                if (bomb.y > gameArea.offsetHeight - 100) {
+                    createExplosion(bomb.x + 40, bomb.y + 40);
+                    bomb.element.remove();
+                    lives--;
+                    updateUI();
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                bombs.forEach((bomb, bIndex) => {
+                    if (bullet.x > bomb.x && 
+                        bullet.x < bomb.x + 80 &&
+                        bullet.y > bomb.y && 
+                        bullet.y < bomb.y + 80) {
+                        
+                        // Hit detected
+                        createExplosion(bomb.x + 40, bomb.y + 40);
+                        showScorePopup(bomb.x + 40, bomb.y, '+100');
+                        
+                        bomb.element.classList.add('hit');
+                        bullet.element.remove();
+                        
+                        setTimeout(() => {
+                            bomb.element.remove();
+                        }, 500);
+                        
+                        bullets.splice(bIndex, 1);
+                        bombs.splice(bIndex, 1);
+                        
+                        score += 100;
+                        updateUI();
+                    }
+                });
+            });
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = (x - 50) + 'px';
+            explosion.style.top = (y - 50) + 'px';
+            gameArea.appendChild(explosion);
+            
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function showScorePopup(x, y, text) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = text;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            gameArea.appendChild(popup);
+            
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            moveAlpaca();
+            updateBullets();
+            updateBombs();
+            checkCollisions();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(animationId);
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function restartGame() {
+            // Clear all elements
+            bullets.forEach(bullet => bullet.element.remove());
+            bombs.forEach(bomb => bomb.element.remove());
+            document.querySelectorAll('.explosion, .score-popup').forEach(el => el.remove());
+            
+            bullets = [];
+            bombs = [];
+            alpacaPosition = 400;
+            
+            document.getElementById('gameOver').style.display = 'none';
+            startGame();
+        }
+
+        // Initial position
+        alpaca.style.left = alpacaPosition + 'px';
+    </script>
+</body>
+</html>
+
+
