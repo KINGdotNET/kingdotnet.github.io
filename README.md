@@ -7,6 +7,7 @@ Home of <a href="https://king.net"><b>KING.NET</b></a> Projects. A service by <a
   <li>https://SwapToken.com - Made it simple to swap token, changing ...</li>
   <li>https://MultiPlaying.com - Collections of FREE Games, updating page</li>
   <li>https://MyScoop.com - Decentralized Social Media (in progress).</li>
+  <li>https://KING.NET/games - Free to Play Games</li>
   <li>Pardon our dust, list will continue to update.</li>
 </ul>
 <p>
